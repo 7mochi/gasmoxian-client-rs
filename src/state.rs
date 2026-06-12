@@ -26,22 +26,15 @@ use rusty_enet as enet;
 
 use crate::{
     enet::EnetClient,
-    servers::SERVERS,
     protocol::{
-        LOBBY_LEVEL_ID,
-        CgEverythingKart, CgMessageCharacter, CgMessageEndRace, CgMessageEngine,
-        CgMessageFinishTimer, CgMessageName, CgMessagePassword, CgMessageRoom,
-        CgMessageRoomType, CgMessageRoomTypePassword, CgMessageSpecial,
-        CgMessageTrack, CgMessageWarpclock, CgMessageWeapon, CgHeader,
-        ClientState, DRIVER_BESTLAP_OFFSET, DRIVER_COURSE_OFFSET,
-        GASMOXIAN_VER, GameMode, MAX_NUM_PLAYERS, NAME_LENGTH, ServerMsg,
-        SgEverythingKart, SgMessageCharacter, SgMessageClientStatus, SgMessageEndRace,
-        SgMessageEngine, SgMessageFinishTimer, SgMessageName, SgMessageRoomType,
-        SgMessageRooms, SgMessageSpecial, SgMessageTrack, SgMessageWarpclock,
-        SgMessageWeapon,
+        ClientState, DRIVER_BESTLAP_OFFSET, DRIVER_COURSE_OFFSET, GASMOXIAN_VER, GameMode,
+        LOBBY_LEVEL_ID, MAX_NUM_PLAYERS, NAME_LENGTH, ServerMsg, client, server,
     },
-    ps1mem::{ADDR_CHARACTER_ID, ADDR_CHEATS, ADDR_GAME_MODE, ADDR_GAMEPAD_BASE,
-             ADDR_LOADING_STAGE, ADDR_PSX_PTR, Ps1Mem},
+    ps1mem::{
+        ADDR_CHARACTER_ID, ADDR_CHEATS, ADDR_GAME_MODE, ADDR_GAMEPAD_BASE, ADDR_LOADING_STAGE,
+        ADDR_PSX_PTR, Ps1Mem,
+    },
+    servers::SERVERS,
 };
 
 // all these variables are everywhere in the original code
@@ -160,14 +153,20 @@ fn launch_enter_pid(ps1: &Ps1Mem, _net: &mut EnetClient, _state: &mut GameState)
 fn launch_pick_server(ps1: &Ps1Mem, _net: &mut EnetClient, state: &mut GameState) {
     // GASMOX_CLIENT.cpp:829-1110
     let level_id = ps1.read_u32(ADDR_GAME_MODE.wrapping_add(0x1a10)) as i32;
-    if level_id != LOBBY_LEVEL_ID { return; }
+    if level_id != LOBBY_LEVEL_ID {
+        return;
+    }
 
     let loading = ps1.read_u32(ADDR_LOADING_STAGE);
-    if loading != 0xFFFFFFFF { return; }
+    if loading != 0xFFFFFFFF {
+        return;
+    }
 
     let server_country = {
         let octr = ps1.octr();
-        if octr.server_lock_in1 == 0 { return; }
+        if octr.server_lock_in1 == 0 {
+            return;
+        }
         octr.server_country as usize
     };
 
@@ -184,12 +183,18 @@ fn launch_pick_server(ps1: &Ps1Mem, _net: &mut EnetClient, state: &mut GameState
         Ok(mut addrs) => match addrs.next() {
             Some(a) => a,
             None => {
-                println!("Error: Could not resolve server address: {}", server.address);
+                println!(
+                    "Error: Could not resolve server address: {}",
+                    server.address
+                );
                 return;
             }
         },
         Err(e) => {
-            println!("Error: Failed to resolve server address: {} ({})", server.address, e);
+            println!(
+                "Error: Failed to resolve server address: {} ({})",
+                server.address, e
+            );
             return;
         }
     };
@@ -198,7 +203,11 @@ fn launch_pick_server(ps1: &Ps1Mem, _net: &mut EnetClient, state: &mut GameState
     state.static_server_id = server_country as i32;
     state.server_addr = Some(addr);
 
-    println!("Client: Ready to connect to \"{}\" [{}]...", server.address, addr.ip());
+    println!(
+        "Client: Ready to connect to \"{}\" [{}]...",
+        server.address,
+        addr.ip()
+    );
     ps1.octr_mut().current_state = ClientState::LaunchPickRoom as i32;
 }
 
@@ -207,7 +216,7 @@ fn launch_pick_room(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) {
     state.count_frame += 1;
     if state.count_frame == 60 {
         state.count_frame = 0;
-        net.send_reliable(&CgMessageRoom { room: 0xFF }.to_bytes());
+        net.send_reliable(&client::MessageRoom { room: 0xFF }.to_bytes());
     }
 
     if ps1.octr().server_lock_in2 == 0 {
@@ -220,7 +229,7 @@ fn launch_pick_room(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) {
     }
     state.connection_attempt = 1;
     let room = ps1.octr().server_room;
-    net.send_reliable(&CgMessageRoom { room }.to_bytes());
+    net.send_reliable(&client::MessageRoom { room }.to_bytes());
     ps1.octr_mut().auto_retry_join_room_index = -1;
 }
 
@@ -248,7 +257,7 @@ fn launch_enter_password(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
     for i in 0..8 {
         seq[i] = ps1.octr().room_password_sequence[i];
     }
-    net.send_reliable(&CgMessagePassword { seq }.to_bytes());
+    net.send_reliable(&client::MessagePassword { seq }.to_bytes());
     state.password_sent = true;
 }
 
@@ -279,16 +288,31 @@ fn lobby_assign_role(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) 
         for i in 0..8 {
             seq[i] = ps1.octr().room_password_sequence[i];
         }
-        net.send_reliable(&CgMessageRoomTypePassword { room_type, r_type_locked, seq }.to_bytes());
+        net.send_reliable(
+            &client::MessageRoomTypePassword {
+                room_type,
+                r_type_locked,
+                seq,
+            }
+            .to_bytes(),
+        );
     } else {
-        net.send_reliable(&CgMessageRoomType { room_type, r_type_locked }.to_bytes());
+        net.send_reliable(
+            &client::MessageRoomType {
+                room_type,
+                r_type_locked,
+            }
+            .to_bytes(),
+        );
     }
 }
 
 fn lobby_host_track_pick(ps1: &Ps1Mem, net: &mut EnetClient, _state: &mut GameState) {
     let (lap_id, track_id) = {
         let octr = ps1.octr();
-        if octr.locked_in_lap == 0 { return; }
+        if octr.locked_in_lap == 0 {
+            return;
+        }
         (octr.lap_id, octr.level_id)
     };
 
@@ -302,7 +326,7 @@ fn lobby_host_track_pick(ps1: &Ps1Mem, net: &mut EnetClient, _state: &mut GameSt
 
     stop_animation();
     println!("Client: Sending track to the server...");
-    net.send_reliable(&CgMessageTrack { track_id, lap_id }.to_bytes());
+    net.send_reliable(&client::MessageTrack { track_id, lap_id }.to_bytes());
     ps1.octr_mut().current_state = ClientState::LobbySpecialPick as i32;
 }
 
@@ -310,7 +334,9 @@ fn lobby_special_pick(ps1: &Ps1Mem, net: &mut EnetClient, _state: &mut GameState
     let mut gamemodes = [false; 18];
     {
         let octr = ps1.octr();
-        if octr.locked_in_special == 0 { return; }
+        if octr.locked_in_special == 0 {
+            return;
+        }
         for i in 0..18 {
             gamemodes[i] = octr.gamemodes[i];
         }
@@ -319,7 +345,7 @@ fn lobby_special_pick(ps1: &Ps1Mem, net: &mut EnetClient, _state: &mut GameState
 
     stop_animation();
     println!("Client: Sending gamemodes to the server...");
-    net.send_reliable(&CgMessageSpecial { gamemodes }.to_bytes());
+    net.send_reliable(&client::MessageSpecial { gamemodes }.to_bytes());
     ps1.octr_mut().current_state = ClientState::LobbyCharacterPick as i32;
 }
 
@@ -339,10 +365,13 @@ fn lobby_character_pick(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameStat
     {
         state.previous_character_id = character_id;
         state.previous_bool_locked_in = bool_locked_in;
-        net.send_reliable(&CgMessageCharacter {
-            character_id: character_id as u8,
-            bool_locked_in: bool_locked_in != 0,
-        }.to_bytes());
+        net.send_reliable(
+            &client::MessageCharacter {
+                character_id: character_id as u8,
+                bool_locked_in: bool_locked_in != 0,
+            }
+            .to_bytes(),
+        );
     }
 
     if bool_locked_in != 0 {
@@ -358,10 +387,13 @@ fn lobby_engine_pick(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) 
     {
         state.previous_enginetype = engine_type;
         state.previous_bool_locked_in_engine = bool_locked_in;
-        net.send_reliable(&CgMessageEngine {
-            enginetype: engine_type as u8,
-            bool_locked_in: bool_locked_in != 0,
-        }.to_bytes());
+        net.send_reliable(
+            &client::MessageEngine {
+                enginetype: engine_type as u8,
+                bool_locked_in: bool_locked_in != 0,
+            }
+            .to_bytes(),
+        );
     }
 
     if bool_locked_in != 0 {
@@ -387,7 +419,7 @@ fn game_wait_for_race(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState)
         stop_animation();
         println!("Client: Gasmoxian race in progress...");
         state.already_sent_start_race = 1;
-        net.send_reliable(&CgHeader::to_bytes());
+        net.send_reliable(&client::Header::to_bytes());
     }
     send_everything(ps1, net, state);
 }
@@ -407,21 +439,30 @@ fn game_start_race(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) {
     // Warpclock cooldown logic (GASMOX_CLIENT.cpp:1500-1551)
     if state.send_warpclock == 0 && state.warpclock_delay == 0.0 {
         if warpclock != state.previous_warpclock {
-            net.send_reliable(&CgMessageWarpclock { warpclock: warpclock as u8 }.to_bytes());
+            net.send_reliable(
+                &client::MessageWarpclock {
+                    warpclock: warpclock as u8,
+                }
+                .to_bytes(),
+            );
             state.send_warpclock = 1;
             state.previous_warpclock = warpclock;
             state.warpclock_delay = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs_f64();
         }
     }
 
     if state.send_warpclock != 0 {
         let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64();
         state.timers[0] = now - state.warpclock_delay;
         if state.timers[0] >= 50.0 {
             if ps1.octr().warpclock != 0 {
-                net.send_reliable(&CgMessageWarpclock { warpclock: 0 }.to_bytes());
+                net.send_reliable(&client::MessageWarpclock { warpclock: 0 }.to_bytes());
             }
             state.send_warpclock = 0;
             state.warpclock_delay = 0.0;
@@ -434,15 +475,24 @@ fn game_start_race(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) {
         let octr = ps1.octr();
         let mut active = 0;
         for i in 0..octr.driver_count as usize {
-            if octr.name_buffer[i][0] != 0 { active += 1; }
+            if octr.name_buffer[i][0] != 0 {
+                active += 1;
+            }
         }
-        let required = if active >= 4 && state.extra_laps == 0 { 3 }
-            else if active >= 4 && state.extra_laps != 0 { if active >= 5 { 4 } else { 3 } }
-            else if active == 3 { 2 }
-            else if active == 2 { 1 }
-            else { 0 };
+        let required = if active >= 4 && state.extra_laps == 0 {
+            3
+        } else if active >= 4 && state.extra_laps != 0 {
+            if active >= 5 { 4 } else { 3 }
+        } else if active == 3 {
+            2
+        } else if active == 2 {
+            1
+        } else {
+            0
+        };
 
-        if octr.drivers_ended_count as i32 == required && required != 0
+        if octr.drivers_ended_count as i32 == required
+            && required != 0
             && state.previous_finish_timer != 30
         {
             let timer: u8 = if state.extra_laps != 0 { 60 } else { 30 };
@@ -454,7 +504,12 @@ fn game_start_race(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) {
     };
 
     if finish_race_timer > 0 && state.already_sended == 0 {
-        net.send_reliable(&CgMessageFinishTimer { finish_timer: finish_race_timer }.to_bytes());
+        net.send_reliable(
+            &client::MessageFinishTimer {
+                finish_timer: finish_race_timer,
+            }
+            .to_bytes(),
+        );
         state.already_sended = 1;
     }
 }
@@ -467,10 +522,13 @@ fn game_end_race(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) {
         let course_time = ps1.read_u32(psx_ptr + DRIVER_COURSE_OFFSET);
         let best_lap = ps1.read_u32(psx_ptr + DRIVER_BESTLAP_OFFSET);
 
-        net.send_reliable(&CgMessageEndRace {
-            course_time: course_time as i32,
-            lap_time: best_lap as i32,
-        }.to_bytes());
+        net.send_reliable(
+            &client::MessageEndRace {
+                course_time: course_time as i32,
+                lap_time: best_lap as i32,
+            }
+            .to_bytes(),
+        );
 
         let ended = ps1.octr().drivers_ended_count as usize;
         ps1.octr_mut().race_stats[ended].slot = 0;
@@ -485,10 +543,13 @@ fn game_end_race(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) {
             let octr = ps1.octr();
             let mut active = 0;
             for i in 0..octr.driver_count as usize {
-                if octr.name_buffer[i][0] != 0 { active += 1; }
+                if octr.name_buffer[i][0] != 0 {
+                    active += 1;
+                }
             }
             let ended = octr.drivers_ended_count as i32;
-            if ended == active && state.previous_finish_timer != 3
+            if ended == active
+                && state.previous_finish_timer != 3
                 && state.previous_finish_timer != 6
             {
                 let timer: u8 = if active == 1 { 6 } else { 3 };
@@ -497,13 +558,19 @@ fn game_end_race(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) {
                 state.already_sended = 1;
             }
 
-            let needs = octr.finish_race_timer > 0 && state.already_sended != 0
+            let needs = octr.finish_race_timer > 0
+                && state.already_sended != 0
                 && (state.previous_finish_timer == 3 || state.previous_finish_timer == 6);
             (octr.finish_race_timer, needs)
         };
 
         if needs_send {
-            net.send_reliable(&CgMessageFinishTimer { finish_timer: finish_race_timer }.to_bytes());
+            net.send_reliable(
+                &client::MessageFinishTimer {
+                    finish_timer: finish_race_timer,
+                }
+                .to_bytes(),
+            );
             state.already_sended = 0;
         }
     }
@@ -514,22 +581,26 @@ fn send_everything(ps1: &Ps1Mem, net: &mut EnetClient, _state: &mut GameState) {
     let hold_raw = ps1.read_u32(ADDR_GAMEPAD_BASE + 0x10);
 
     // lossless compression, bottom byte is never used,
-	// cause psx renders with 3 bytes, and top byte
-	// is never used due to world scale (just pure luck)
+    // cause psx renders with 3 bytes, and top byte
+    // is never used due to world scale (just pure luck)
 
     // ignore Circle/L2
     let mut hold = hold_raw & !0xC0;
 
     // put L1/R1 into one byte
-    if (hold & 0x400) != 0 { hold |= 0x40; }
-    if (hold & 0x800) != 0 { hold |= 0x80; }
-    
+    if (hold & 0x400) != 0 {
+        hold |= 0x40;
+    }
+    if (hold & 0x800) != 0 {
+        hold |= 0x80;
+    }
+
     // position
     let psx_pointer = (ps1.read_u32(ADDR_PSX_PTR) & 0xFFFFFF) as u32;
 
     // lossless compression, bottom byte is never used,
-	// cause psx renders with 3 bytes, and top byte
-	// is never used due to world scale (just pure luck)
+    // cause psx renders with 3 bytes, and top byte
+    // is never used due to world scale (just pure luck)
     let position_x = (ps1.read_u32(psx_pointer + 0x2d4) / 256) as i16;
     let position_y = (ps1.read_u32(psx_pointer + 0x2d8) / 256) as i16;
     let position_z = (ps1.read_u32(psx_pointer + 0x2dc) / 256) as i16;
@@ -539,12 +610,12 @@ fn send_everything(ps1: &Ps1Mem, net: &mut EnetClient, _state: &mut GameState) {
 
     let wumpa = ps1.read_u8(psx_pointer + 0x30);
     let reserves = ps1.read_u16(psx_pointer + 0x3e2);
-    
-    let kart = CgEverythingKart {
+
+    let kart = client::EverythingKart {
         wumpa,
         reserves: reserves > 200,
         kart_rot1: (angle & 0x1f) as u8, // angle_bit_5
-        kart_rot2: (angle >> 5) as u8, // angle_top_8
+        kart_rot2: (angle >> 5) as u8,   // angle_top_8
         button_hold: hold as u8,
         pos_x: position_x,
         pos_y: position_y,
@@ -558,13 +629,21 @@ fn send_everything(ps1: &Ps1Mem, net: &mut EnetClient, _state: &mut GameState) {
         if octr.shoot[0].now == 0 {
             None
         } else {
-            Some((octr.shoot[0].weapon, octr.shoot[0].juiced != 0, octr.shoot[0].flags))
+            Some((
+                octr.shoot[0].weapon,
+                octr.shoot[0].juiced != 0,
+                octr.shoot[0].flags,
+            ))
         }
     };
-    
+
     if let Some((weapon, juiced, flags)) = weapon_data {
         ps1.octr_mut().shoot[0].now = 0;
-        let w = CgMessageWeapon { juiced, flags, weapon };
+        let w = client::MessageWeapon {
+            juiced,
+            flags,
+            weapon,
+        };
         net.send_reliable(&w.to_bytes());
     }
 }
@@ -601,11 +680,15 @@ pub fn afk_timer(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) {
 
     if state.time_start == 0.0 {
         state.time_start = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64();
     }
 
     let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs_f64();
     if (now - state.time_start) >= 80.0 {
         if !state.lock_engine_and_character {
             state.time_start = 0.0;
@@ -650,14 +733,17 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
     match msg_type {
         t if t == ServerMsg::Rooms as u8 => {
             // GASMOX_CLIENT.cpp:161-207
-            let r = SgMessageRooms::from_bytes(data);
+            let r = server::MessageRooms::from_bytes(data);
 
             ps1.octr_mut().pc_version = GASMOXIAN_VER;
             ps1.octr_mut().server_version = r.version as i32;
 
             if r.version != GASMOXIAN_VER as u16 {
                 stop_animation();
-                println!("Client: Version mismatch! Server={}, Client={}", r.version, GASMOXIAN_VER);
+                println!(
+                    "Client: Version mismatch! Server={}, Client={}",
+                    r.version, GASMOXIAN_VER
+                );
                 ps1.octr_mut().current_state = ClientState::LaunchError as i32;
                 return;
             }
@@ -684,9 +770,10 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
         }
         t if t == ServerMsg::RoomType as u8 => {
             // GASMOX_CLIENT.cpp:209-224
-            let r = SgMessageRoomType::from_bytes(data);
+            let r = server::MessageRoomType::from_bytes(data);
             ps1.octr_mut().room_type = r.room_type;
-            if r.room_type == 2 && ps1.octr().r_type_locked == 0
+            if r.room_type == 2
+                && ps1.octr().r_type_locked == 0
                 && ps1.octr().current_state == ClientState::LaunchPickRoom as i32
             {
                 state.password_sent = false;
@@ -711,7 +798,7 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
         }
         t if t == ServerMsg::NewClient as u8 => {
             // GASMOX_CLIENT.cpp:244-300
-            let r = SgMessageClientStatus::from_bytes(data);
+            let r = server::MessageClientStatus::from_bytes(data);
             state.password_sent = false;
             ps1.octr_mut().driver_id = r.client_id;
             ps1.octr_mut().driver_count = r.num_clients;
@@ -766,16 +853,20 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
             for i in 0..NAME_LENGTH {
                 name[i] = name_buf[i];
             }
-            net.send_reliable(&CgMessageName { name }.to_bytes());
+            net.send_reliable(&client::MessageName { name }.to_bytes());
 
             ps1.octr_mut().current_state = ClientState::LobbyAssignRole as i32;
         }
         t if t == ServerMsg::Name as u8 => {
             // GASMOX_CLIENT.cpp:302-329
-            let r = SgMessageName::from_bytes(data);
+            let r = server::MessageName::from_bytes(data);
             let driver_id = ps1.octr().driver_id as u8;
             if r.client_id != driver_id {
-                let slot = if r.client_id < driver_id { r.client_id + 1 } else { r.client_id } as usize;
+                let slot = if r.client_id < driver_id {
+                    r.client_id + 1
+                } else {
+                    r.client_id
+                } as usize;
                 ps1.octr_mut().driver_count = r.num_clients;
                 for i in 0..NAME_LENGTH {
                     ps1.octr_mut().name_buffer[slot][i] = r.name[i];
@@ -783,7 +874,9 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
                 ps1.octr_mut().name_buffer[slot][NAME_LENGTH] = 0;
 
                 // Handle disconnection — force SQUARE if name starts with 0
-                if r.name[0] == 0 || ps1.octr().current_state <= ClientState::LobbyWaitForLoading as i32 {
+                if r.name[0] == 0
+                    || ps1.octr().current_state <= ClientState::LobbyWaitForLoading as i32
+                {
                     let gp_addr = ADDR_GAMEPAD_BASE + (slot as u32 * 0x50);
                     ps1.write_u32(gp_addr, 0x20);
                     ps1.write_u32(gp_addr + 0x4, 0);
@@ -794,7 +887,7 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
         }
         t if t == ServerMsg::Track as u8 => {
             // GASMOX_CLIENT.cpp:331-361
-            let r = SgMessageTrack::from_bytes(data);
+            let r = server::MessageTrack::from_bytes(data);
             let num_laps = if r.lap_id >= 4 && r.lap_id <= 15 {
                 let lap_values = [10, 15, 20, 25, 30, 35, 40, 50, 69, 80, 90, 127];
                 lap_values[(r.lap_id - 4) as usize]
@@ -808,7 +901,7 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
         }
         t if t == ServerMsg::Special as u8 => {
             // GASMOX_CLIENT.cpp:363-410
-            let r = SgMessageSpecial::from_bytes(data);
+            let r = server::MessageSpecial::from_bytes(data);
             let octr = ps1.octr_mut();
             // Copy all gamemode toggles
             for i in 0..18 {
@@ -832,15 +925,30 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
             for i in 0..18 {
                 if i != GameMode::IcyTracks as usize && i != GameMode::RetroFueled as usize {
                     if octr.gamemodes[i] {
-                        println!("\n MODE: {} ENABLED", match i {
-                            0 => "NORMAL", 1 => "MIRROR", 2 => "ICY TRACKS",
-                            3 => "ITEMLESS", 4 => "MOON MODE", 5 => "RETRO FUELED",
-                            6 => "FIRST PERSON", 7 => "BOSS RACE", 8 => "DEMO CAMERA",
-                            9 => "N. VERTED", 10 => "SHORTCUTLESS", 11 => "NIGHT",
-                            12 => "DARKNESS", 13 => "ITEM CHAOS", 14 => "SURVIVAL",
-                            15 => "SURVIVAL TIMER", 16 => "VANILLA ITEMS", 17 => "WALL DRIVE",
-                            _ => "UNKNOWN",
-                        });
+                        println!(
+                            "\n MODE: {} ENABLED",
+                            match i {
+                                0 => "NORMAL",
+                                1 => "MIRROR",
+                                2 => "ICY TRACKS",
+                                3 => "ITEMLESS",
+                                4 => "MOON MODE",
+                                5 => "RETRO FUELED",
+                                6 => "FIRST PERSON",
+                                7 => "BOSS RACE",
+                                8 => "DEMO CAMERA",
+                                9 => "N. VERTED",
+                                10 => "SHORTCUTLESS",
+                                11 => "NIGHT",
+                                12 => "DARKNESS",
+                                13 => "ITEM CHAOS",
+                                14 => "SURVIVAL",
+                                15 => "SURVIVAL TIMER",
+                                16 => "VANILLA ITEMS",
+                                17 => "WALL DRIVE",
+                                _ => "UNKNOWN",
+                            }
+                        );
                     }
                 }
             }
@@ -848,20 +956,28 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
         }
         t if t == ServerMsg::Character as u8 => {
             // GASMOX_CLIENT.cpp:411-440
-            let r = SgMessageCharacter::from_bytes(data);
+            let r = server::MessageCharacter::from_bytes(data);
             let driver_id = ps1.octr().driver_id as u8;
             if r.client_id != driver_id {
-                let slot = if r.client_id < driver_id { r.client_id + 1 } else { r.client_id };
+                let slot = if r.client_id < driver_id {
+                    r.client_id + 1
+                } else {
+                    r.client_id
+                };
                 ps1.write_u16(0x80086e84 + (slot as u32 * 2), r.character_id as u16);
                 ps1.octr_mut().locked_in_characters[r.client_id as usize] = r.bool_locked_in as i8;
             }
         }
         t if t == ServerMsg::Engine as u8 => {
             // GASMOX_CLIENT.cpp:441-462
-            let r = SgMessageEngine::from_bytes(data);
+            let r = server::MessageEngine::from_bytes(data);
             let driver_id = ps1.octr().driver_id as u8;
             if r.client_id != driver_id {
-                let slot = if r.client_id < driver_id { r.client_id + 1 } else { r.client_id };
+                let slot = if r.client_id < driver_id {
+                    r.client_id + 1
+                } else {
+                    r.client_id
+                };
                 let engine = if r.enginetype > 3 { 3 } else { r.enginetype };
                 ps1.octr_mut().engine_type[slot as usize] = engine as i8;
                 ps1.octr_mut().locked_in_engines[r.client_id as usize] = r.bool_locked_in as i8;
@@ -875,17 +991,33 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
         }
         t if t == ServerMsg::RaceData as u8 => {
             // GASMOX_CLIENT.cpp:482-578
-            if ps1.octr().current_state < ClientState::GameWaitForRace as i32 { return; }
-            if ps1.read_u32(ADDR_LOADING_STAGE) != 0xFFFFFFFF { return; }
+            if ps1.octr().current_state < ClientState::GameWaitForRace as i32 {
+                return;
+            }
+            if ps1.read_u32(ADDR_LOADING_STAGE) != 0xFFFFFFFF {
+                return;
+            }
 
-            let r = SgEverythingKart::from_bytes(data);
+            let r = server::EverythingKart::from_bytes(data);
             let driver_id = ps1.octr().driver_id as u8;
-            if r.client_id == driver_id { return; }
-            let slot = if r.client_id < driver_id { r.client_id + 1 } else { r.client_id } as usize;
+            if r.client_id == driver_id {
+                return;
+            }
+            let slot = if r.client_id < driver_id {
+                r.client_id + 1
+            } else {
+                r.client_id
+            } as usize;
 
             let mut curr = r.button_hold as u32;
-            if (curr & 0x40) != 0 { curr &= !0x40; curr |= 0x400; }
-            if (curr & 0x80) != 0 { curr &= !0x80; curr |= 0x800; }
+            if (curr & 0x40) != 0 {
+                curr &= !0x40;
+                curr |= 0x400;
+            }
+            if (curr & 0x80) != 0 {
+                curr &= !0x80;
+                curr |= 0x800;
+            }
 
             let prev = state.previous_button[slot] as u32;
             state.previous_button[slot] = curr as i32;
@@ -904,15 +1036,21 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
             let angle = (r.kart_rot1 as u32) | ((r.kart_rot2 as u32) << 5);
             ps1.write_u16(psx_ptr + 0x39a, (angle & 0xFFF) as u16);
 
-            if r.bool_reserves { ps1.write_u16(psx_ptr + 0x3e2, 200); }
+            if r.bool_reserves {
+                ps1.write_u16(psx_ptr + 0x3e2, 200);
+            }
             ps1.write_u16(psx_ptr + 0x30, r.wumpa as u16);
         }
         t if t == ServerMsg::Weapon as u8 => {
             // GASMOX_CLIENT.cpp:581-598
-            let r = SgMessageWeapon::from_bytes(data);
+            let r = server::MessageWeapon::from_bytes(data);
             let driver_id = ps1.octr().driver_id as u8;
             if r.client_id != driver_id {
-                let slot = if r.client_id < driver_id { r.client_id + 1 } else { r.client_id };
+                let slot = if r.client_id < driver_id {
+                    r.client_id + 1
+                } else {
+                    r.client_id
+                };
                 ps1.octr_mut().shoot[slot as usize].now = 1;
                 ps1.octr_mut().shoot[slot as usize].weapon = r.weapon;
                 ps1.octr_mut().shoot[slot as usize].juiced = r.juiced as u8;
@@ -921,7 +1059,7 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
         }
         t if t == ServerMsg::Warpclock as u8 => {
             // GASMOX_CLIENT.cpp:600-613
-            let r = SgMessageWarpclock::from_bytes(data);
+            let r = server::MessageWarpclock::from_bytes(data);
             state.previous_warpclock = r.warpclock as i32;
             if ps1.octr().warpclock != r.warpclock {
                 ps1.octr_mut().warpclock = r.warpclock;
@@ -929,7 +1067,7 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
         }
         t if t == ServerMsg::FinishTimer as u8 => {
             // GASMOX_CLIENT.cpp:614-624
-            let r = SgMessageFinishTimer::from_bytes(data);
+            let r = server::MessageFinishTimer::from_bytes(data);
             if r.finish_timer as i32 != state.previous_finish_timer {
                 ps1.octr_mut().finish_race_timer = r.finish_timer;
                 state.previous_finish_timer = r.finish_timer as i32;
@@ -937,18 +1075,28 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
         }
         t if t == ServerMsg::EndRace as u8 => {
             // GASMOX_CLIENT.cpp:625-660
-            let r = SgMessageEndRace::from_bytes(data);
+            let r = server::MessageEndRace::from_bytes(data);
             let driver_id = ps1.octr().driver_id as u8;
-            if r.client_id == driver_id { return; }
-            let slot = if r.client_id < driver_id { r.client_id + 1 } else { r.client_id } as usize;
+            if r.client_id == driver_id {
+                return;
+            }
+            let slot = if r.client_id < driver_id {
+                r.client_id + 1
+            } else {
+                r.client_id
+            } as usize;
 
             if state.square_delay[slot] == 0 {
                 state.square_delay[slot] = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
             }
 
             let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
             if now - state.square_delay[slot] >= 3 {
                 let gp_addr = ADDR_GAMEPAD_BASE + (slot as u32 * 0x50);
                 ps1.write_u32(gp_addr, 0x20);

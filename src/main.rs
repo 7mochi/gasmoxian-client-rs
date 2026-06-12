@@ -6,7 +6,9 @@ use gasmoxian_client_rs::{
     filter::contains_prohibited_name,
     protocol::{ClientState, NAME_LENGTH},
     ps1mem::Ps1Mem,
-    state::{frame_stall, process_new_messages, discon_select, afk_timer, GameState, STATE_FUNCTIONS},
+    state::{
+        GameState, STATE_FUNCTIONS, afk_timer, discon_select, frame_stall, process_new_messages,
+    },
 };
 
 fn main() {
@@ -146,6 +148,16 @@ fn print_banner(show_name: bool) {
     println!(" | |_| |/ ___ \\ ___) | |  | | |_| /  \\ | | / ___ \\| |\\  |");
     println!("  \\____/_/   \\_\\____/|_|  |_|\\___/_/\\_\\___/_/   \\_\\_| \\_|");
     println!("                                                          ");
+    println!("⠀⠀⠀⠀⣀⣀⣤⣤⣦⣶⢶⣶⣿⣿⣿⣿⣿⣿⣿⣷⣶⣶⡄⠀⠀⠀⠀⠀⠀⠀");
+    println!("⠀⠀⠀⠀⣿⣿⣿⠿⣿⣿⣾⣿⣿⣿⣿⣿⣿⠟⠛⠛⢿⣿⡇⠀⠀⠀⠀⠀⠀⠀");
+    println!("⠀⠀⠀⠀⣿⡟⠡⠂⠀⢹⣿⣿⣿⣿⣿⣿⡇⠘⠁⠀⠀⣿⡇⠀⢠⣄⠀⠀⠀⠀");
+    println!("⠀⠀⠀⠀⢸⣗⢴⣶⣷⣷⣿⣿⣿⣿⣿⣿⣷⣤⣤⣤⣴⣿⣗⣄⣼⣷⣶⡄⠀⠀");
+    println!("⠀⠀⠀⢀⣾⣿⡅⠐⣶⣦⣶⠀⢰⣶⣴⣦⣦⣶⠴⠀⢠⣿⣿⣿⣿⣼⣿⡇⠀⠀");
+    println!("⠀⠀⢀⣾⣿⣿⣷⣬⡛⠷⣿⣿⣿⣿⣿⣿⣿⠿⠿⣠⣿⣿⣿⣿⣿⠿⠛⠃⠀⠀");
+    println!("⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⣶⣦⣭⣭⣥⣭⣵⣶⣿⣿⣿⣿⣟⠉⠀⠀⠀⠀⠀⠀");
+    println!("⠀⠀⠀⠙⠇⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟⠀⠀⠀⠀⠀⠀⠀");
+    println!("⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣛⠛⠛⠛⠛⠛⢛⣿⣿⣿⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀");
+    println!("⠀⠀⠀⠀⠀⠿⣿⣿⣿⠿⠿⠀⠀⠀⠀⠀⠸⣿⣿⣿⣿⠿⠇⠀⠀⠀⠀⠀");
     print!("\x1b[0m");
     println!(" Gasmoxian Client (press CTRL + C to quit)");
     println!();

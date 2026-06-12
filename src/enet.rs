@@ -18,7 +18,8 @@ impl EnetClient {
                 channel_limit: 2,
                 ..Default::default()
             },
-        ).unwrap();
+        )
+        .unwrap();
         let addr: std::net::SocketAddr = "127.0.0.1:1".parse().unwrap();
         let peer = host.connect(addr, 2, 0).unwrap();
         let peer_id = peer.id();
