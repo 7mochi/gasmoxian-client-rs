@@ -7,6 +7,24 @@ pub struct EnetClient {
 }
 
 impl EnetClient {
+    /// Creates a dummy client for use before connection is established.
+    /// State functions 0-1 (LaunchEnterPid, LaunchPickServer) accept it but never use it.
+    pub fn dummy() -> Self {
+        let socket = UdpSocket::bind("0.0.0.0:0").unwrap();
+        let mut host = enet::Host::new(
+            socket,
+            enet::HostSettings {
+                peer_limit: 1,
+                channel_limit: 2,
+                ..Default::default()
+            },
+        ).unwrap();
+        let addr: std::net::SocketAddr = "127.0.0.1:1".parse().unwrap();
+        let peer = host.connect(addr, 2, 0).unwrap();
+        let peer_id = peer.id();
+        EnetClient { host, peer_id }
+    }
+
     pub fn new(addr: std::net::SocketAddr) -> Result<Self, Box<dyn std::error::Error>> {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
         let mut host = enet::Host::new(

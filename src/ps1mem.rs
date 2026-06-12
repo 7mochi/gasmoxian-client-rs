@@ -84,12 +84,20 @@ impl Ps1Mem {
         unsafe { *self.pointer.add((addr & 0xFFFFFF) as usize) }
     }
 
+    pub fn write_u8(&self, addr: u32, val: u8) {
+        unsafe { *self.pointer.add((addr & 0xFFFFFF) as usize) = val }
+    }
+
     pub fn read_u16(&self, addr: u32) -> u16 {
         unsafe { *(self.pointer.add((addr & 0xFFFFFF) as usize) as *const u16) }
     }
 
     pub fn read_u32(&self, addr: u32) -> u32 {
         unsafe { *(self.pointer.add((addr & 0xFFFFFF) as usize) as *const u32) }
+    }
+
+    pub fn write_u32(&self, addr: u32, val: u32) {
+        unsafe { *(self.pointer.add((addr & 0xFFFFFF) as usize) as *mut u32) = val }
     }
 }
 
