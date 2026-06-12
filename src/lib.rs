@@ -1,3 +1,4 @@
+pub mod console;
 pub mod enet;
 pub mod filter;
 pub mod protocol;

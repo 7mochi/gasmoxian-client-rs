@@ -19,12 +19,12 @@
 // - DisconSELECT() → línea 753
 // - SendEverything() → línea 1384
 
-use std::io::Write;
 use std::net::ToSocketAddrs;
 
 use rusty_enet as enet;
 
 use crate::{
+    console,
     enet::EnetClient,
     protocol::{
         ClientState, DRIVER_BESTLAP_OFFSET, DRIVER_COURSE_OFFSET, GASMOXIAN_VER, GameMode,
@@ -144,8 +144,8 @@ fn launch_enter_pid(ps1: &Ps1Mem, _net: &mut EnetClient, _state: &mut GameState)
         return;
     }
 
-    stop_animation();
-    println!("Client: Waiting to connect to a server...");
+    console::spinner_ok("Connected to DuckStation");
+    console::info("Waiting to connect to a server...");
 
     ps1.octr_mut().current_state = ClientState::LaunchPickServer as i32;
 }
@@ -170,10 +170,10 @@ fn launch_pick_server(ps1: &Ps1Mem, _net: &mut EnetClient, state: &mut GameState
         octr.server_country as usize
     };
 
-    stop_animation();
+    console::spinner_ok("Ready for server selection");
 
     if server_country >= SERVERS.len() {
-        println!("Client: Private server not yet implemented...");
+        console::err("Private server not yet implemented");
         return;
     }
 
@@ -183,31 +183,20 @@ fn launch_pick_server(ps1: &Ps1Mem, _net: &mut EnetClient, state: &mut GameState
         Ok(mut addrs) => match addrs.next() {
             Some(a) => a,
             None => {
-                println!(
-                    "Error: Could not resolve server address: {}",
-                    server.address
-                );
+                console::err(format!("Could not resolve server: {}", server.address));
                 return;
             }
         },
         Err(e) => {
-            println!(
-                "Error: Failed to resolve server address: {} ({})",
-                server.address, e
-            );
+            console::err(format!("Failed to resolve {}: {}", server.address, e));
             return;
         }
     };
 
-    // Store connection info in state for main loop to use
     state.static_server_id = server_country as i32;
     state.server_addr = Some(addr);
 
-    println!(
-        "Client: Ready to connect to \"{}\" [{}]...",
-        server.address,
-        addr.ip()
-    );
+    console::info(format!("Ready to connect to \"{}\"", server.address));
     ps1.octr_mut().current_state = ClientState::LaunchPickRoom as i32;
 }
 
@@ -272,16 +261,14 @@ fn lobby_assign_role(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) 
         return;
     }
 
-    stop_animation();
     let room_type = ps1.octr().room_type;
     let r_type_locked = ps1.octr().r_type_locked;
-    print!("Client: Sending room type (");
-    match room_type {
-        1 => print!("TOURNAMENT"),
-        2 => print!("PASSWORD"),
-        _ => print!("NORMAL"),
-    }
-    println!(")...");
+    let room_type_name = match room_type {
+        1 => "TOURNAMENT",
+        2 => "PASSWORD",
+        _ => "NORMAL",
+    };
+    console::info(format!("Sending room type ({})...", room_type_name));
 
     if room_type == 2 {
         let mut seq = [0u8; 8];
@@ -324,8 +311,8 @@ fn lobby_host_track_pick(ps1: &Ps1Mem, net: &mut EnetClient, _state: &mut GameSt
     };
     ps1.write_u8(0x80096b20 + 0x1d33, num_laps);
 
-    stop_animation();
-    println!("Client: Sending track to the server...");
+    console::spinner_ok("Track sent");
+    console::info("Sending track to the server...");
     net.send_reliable(&client::MessageTrack { track_id, lap_id }.to_bytes());
     ps1.octr_mut().current_state = ClientState::LobbySpecialPick as i32;
 }
@@ -343,8 +330,8 @@ fn lobby_special_pick(ps1: &Ps1Mem, net: &mut EnetClient, _state: &mut GameState
         gamemodes[GameMode::Normal as usize] = true;
     }
 
-    stop_animation();
-    println!("Client: Sending gamemodes to the server...");
+    console::spinner_ok("Gamemodes sent");
+    console::info("Sending gamemodes to the server...");
     net.send_reliable(&client::MessageSpecial { gamemodes }.to_bytes());
     ps1.octr_mut().current_state = ClientState::LobbyCharacterPick as i32;
 }
@@ -416,8 +403,8 @@ fn game_wait_for_race(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState)
     let game_mode = ps1.read_u32(ADDR_GAME_MODE);
 
     if state.already_sent_start_race == 0 && (game_mode & 0x40) == 0 {
-        stop_animation();
-        println!("Client: Gasmoxian race in progress...");
+        console::spinner_ok("Race started");
+        console::info("Gasmoxian race in progress...");
         state.already_sent_start_race = 1;
         net.send_reliable(&client::Header::to_bytes());
     }
@@ -660,8 +647,8 @@ pub fn frame_stall(ps1: &Ps1Mem) {
 pub fn discon_select(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) {
     let hold = ps1.read_u32(ADDR_GAMEPAD_BASE + 0x10);
     if (hold & 0x2000) != 0 {
-        stop_animation();
-        println!("Client: Disconnected (ID: DSELECT)...");
+        console::spinner_ok("Disconnected");
+        console::info("Disconnected (ID: DSELECT)...");
         net.disconnect_now();
         state.lock_engine_and_character = false;
         ps1.octr_mut().auto_retry_join_room_index = -1;
@@ -694,8 +681,7 @@ pub fn afk_timer(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) {
             state.time_start = 0.0;
             return;
         }
-        stop_animation();
-        println!("Client: Kicked, reason: AFK...");
+        console::spinner_err("Kicked for AFK");
         net.disconnect_now();
         state.lock_engine_and_character = false;
         ps1.octr_mut().room_type = 0;
@@ -705,10 +691,7 @@ pub fn afk_timer(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) {
     }
 }
 
-fn stop_animation() {
-    print!("\r   \r"); // limpia el spinner
-    std::io::stdout().flush().ok();
-}
+
 
 // GASMOX_CLIENT.cpp:668-712
 pub fn process_new_messages(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameState) {
@@ -718,7 +701,7 @@ pub fn process_new_messages(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut Game
                 process_receive_event(ps1, net, state, packet.data());
             }
             enet::Event::Disconnect { .. } => {
-                println!("\nClient: Connection Dropped (Server Full or Server Offline)...");
+                console::err("Connection Dropped (Server Full or Server Offline)...");
                 state.password_sent = false;
                 ps1.octr_mut().current_state = -1;
             }
@@ -739,18 +722,13 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
             ps1.octr_mut().server_version = r.version as i32;
 
             if r.version != GASMOXIAN_VER as u16 {
-                stop_animation();
-                println!(
-                    "Client: Version mismatch! Server={}, Client={}",
-                    r.version, GASMOXIAN_VER
-                );
+                console::err(format!("Version mismatch! Server={}, Client={}", r.version, GASMOXIAN_VER));
                 ps1.octr_mut().current_state = ClientState::LaunchError as i32;
                 return;
             }
 
             if ps1.octr().psx_version != GASMOXIAN_VER {
-                stop_animation();
-                println!("Client: PSX version mismatch!");
+                console::err("PSX version mismatch!");
                 ps1.octr_mut().current_state = ClientState::LaunchError as i32;
                 return;
             }
@@ -782,8 +760,8 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
         }
         t if t == ServerMsg::PasswordRejected as u8 => {
             // GASMOX_CLIENT.cpp:226-242
-            stop_animation();
-            println!("\nClient: Wrong password. Returning to room list.");
+            console::spinner_err("Wrong password");
+            console::err("Wrong password. Returning to room list.");
             net.disconnect_now();
             ps1.octr_mut().room_type = 0;
             ps1.octr_mut().r_type_locked = 0;
@@ -822,7 +800,7 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
             state.extra_laps = 0;
 
             if ps1.octr().server_room == 15 {
-                println!("\n EASTER EGG: SAFFI FIRE UNLOCKED IN THIS ROOM \n");
+                console::ok("EASTER EGG: SAFFI FIRE UNLOCKED IN THIS ROOM");
             }
 
             // Zero out all arrays
@@ -914,20 +892,18 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
             cheats &= !(0x100000 | 0x80000 | 0x400 | 0x400000 | 0x8000000 | 0x10000);
             if octr.gamemodes[GameMode::IcyTracks as usize] {
                 cheats |= 0x80000;
-                println!("\n MODE: ICY TRACKS");
+                console::ok("MODE: ICY TRACKS");
             }
             if octr.gamemodes[GameMode::RetroFueled as usize] {
                 cheats |= 0x100000;
-                println!("\n MODE: RETRO FUELED");
+                console::ok("MODE: RETRO FUELED");
             }
             ps1.write_u32(ADDR_CHEATS, cheats);
 
             for i in 0..18 {
                 if i != GameMode::IcyTracks as usize && i != GameMode::RetroFueled as usize {
                     if octr.gamemodes[i] {
-                        println!(
-                            "\n MODE: {} ENABLED",
-                            match i {
+                        console::ok(format!("MODE: {} ENABLED", match i {
                                 0 => "NORMAL",
                                 1 => "MIRROR",
                                 2 => "ICY TRACKS",
@@ -947,9 +923,8 @@ fn process_receive_event(ps1: &Ps1Mem, net: &mut EnetClient, state: &mut GameSta
                                 16 => "VANILLA ITEMS",
                                 17 => "WALL DRIVE",
                                 _ => "UNKNOWN",
-                            }
-                        );
-                    }
+                            }));
+                        }
                 }
             }
             ps1.octr_mut().current_state = ClientState::LobbyCharacterPick as i32;

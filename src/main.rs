@@ -1,39 +1,33 @@
 // GASMOX_CLIENT.cpp:1788-2064
-use std::io::Write;
-
 use gasmoxian_client_rs::{
+    console,
     enet::EnetClient,
     filter::contains_prohibited_name,
     protocol::{ClientState, NAME_LENGTH},
     ps1mem::Ps1Mem,
-    state::{
-        GameState, STATE_FUNCTIONS, afk_timer, discon_select, frame_stall, process_new_messages,
-    },
+    state::{frame_stall, process_new_messages, discon_select, afk_timer, GameState, STATE_FUNCTIONS},
 };
 
 fn main() {
+    console::print_banner();
+
     // Parse username
-    let args: Vec<String> = std::env::args().collect();
     let mut name = [0u8; NAME_LENGTH + 1];
+    let args: Vec<String> = std::env::args().collect();
 
     if args.len() > 1 {
         let arg_bytes = args[1].as_bytes();
         let len = arg_bytes.len().min(NAME_LENGTH);
         name[..len].copy_from_slice(&arg_bytes[..len]);
     } else {
-        print_banner(false);
-        print!("Enter Your Username (11) = ");
-        std::io::stdout().flush().ok();
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input).ok();
-        let input = input.trim();
+        let input = console::prompt_username();
         let bytes = input.as_bytes();
         let len = bytes.len().min(NAME_LENGTH);
         name[..len].copy_from_slice(&bytes[..len]);
     }
 
     if contains_prohibited_name(&name) {
-        println!("\nyour username contains banned words, using default instead: \"gasmoxian\"");
+        console::err("your username contains banned words, using default instead: \"gasmoxian\"");
         let default = b"gasmoxian\0";
         let len = default.len().min(NAME_LENGTH);
         name[..len].copy_from_slice(&default[..len]);
@@ -41,16 +35,14 @@ fn main() {
     name[NAME_LENGTH] = 0;
 
     // Wait for DuckStation shared memory
-    print_banner(true);
-    println!();
-    println!("Client: Waiting for the Gasmoxian binary to load...");
+    console::info("Waiting for the Gasmoxian binary to load...");
 
     let ps1 = loop {
         match Ps1Mem::connect() {
             Ok(mem) => break mem,
             Err(e) => {
-                println!("{}", e);
-                println!("Retrying in 5 seconds...");
+                console::err(format!("{}", e));
+                console::info("Retrying in 5 seconds...");
                 std::thread::sleep(std::time::Duration::from_secs(5));
             }
         }
@@ -76,7 +68,6 @@ fn main() {
     // Main loop
     loop {
         ps1.octr_mut().windows_client_sync = ps1.octr().windows_client_sync.wrapping_add(1);
-
         let state_idx = ps1.octr().current_state;
 
         // AFK timer (only in character/engine selection)
@@ -104,14 +95,14 @@ fn main() {
                     if let Some(addr) = state.server_addr.take() {
                         match EnetClient::new(addr) {
                             Ok(client) => {
-                                println!("Client: Successfully connected!");
+                                console::ok("Successfully connected!");
                                 net = Some(client);
                                 ps1.octr_mut().driver_id = 0xFF;
                                 ps1.octr_mut().current_state = ClientState::LaunchPickRoom as i32;
                                 continue;
                             }
                             Err(e) => {
-                                println!("Error: Failed to connect! ({})", e);
+                                console::err(format!("Failed to connect! ({})", e));
                                 ps1.octr_mut().current_state = ClientState::LaunchPickServer as i32;
                                 continue;
                             }
@@ -137,31 +128,5 @@ fn main() {
 
         // Frame sync
         frame_stall(&ps1);
-    }
-}
-
-fn print_banner(show_name: bool) {
-    print!("\x1b[0;32m");
-    println!("   ____    _    ____  __  __  _____  _____    _    _   _ ");
-    println!("  / ___|  / \\  / ___||  \\/  |/ _ \\ \\/ /_ _|  / \\  | \\ | |");
-    println!(" | |  _  / _ \\ \\___ \\| |\\/| | | | \\  / | |  / _ \\ |  \\| |");
-    println!(" | |_| |/ ___ \\ ___) | |  | | |_| /  \\ | | / ___ \\| |\\  |");
-    println!("  \\____/_/   \\_\\____/|_|  |_|\\___/_/\\_\\___/_/   \\_\\_| \\_|");
-    println!("                                                          ");
-    println!("⠀⠀⠀⠀⣀⣀⣤⣤⣦⣶⢶⣶⣿⣿⣿⣿⣿⣿⣿⣷⣶⣶⡄⠀⠀⠀⠀⠀⠀⠀");
-    println!("⠀⠀⠀⠀⣿⣿⣿⠿⣿⣿⣾⣿⣿⣿⣿⣿⣿⠟⠛⠛⢿⣿⡇⠀⠀⠀⠀⠀⠀⠀");
-    println!("⠀⠀⠀⠀⣿⡟⠡⠂⠀⢹⣿⣿⣿⣿⣿⣿⡇⠘⠁⠀⠀⣿⡇⠀⢠⣄⠀⠀⠀⠀");
-    println!("⠀⠀⠀⠀⢸⣗⢴⣶⣷⣷⣿⣿⣿⣿⣿⣿⣷⣤⣤⣤⣴⣿⣗⣄⣼⣷⣶⡄⠀⠀");
-    println!("⠀⠀⠀⢀⣾⣿⡅⠐⣶⣦⣶⠀⢰⣶⣴⣦⣦⣶⠴⠀⢠⣿⣿⣿⣿⣼⣿⡇⠀⠀");
-    println!("⠀⠀⢀⣾⣿⣿⣷⣬⡛⠷⣿⣿⣿⣿⣿⣿⣿⠿⠿⣠⣿⣿⣿⣿⣿⠿⠛⠃⠀⠀");
-    println!("⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⣶⣦⣭⣭⣥⣭⣵⣶⣿⣿⣿⣿⣟⠉⠀⠀⠀⠀⠀⠀");
-    println!("⠀⠀⠀⠙⠇⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟⠀⠀⠀⠀⠀⠀⠀");
-    println!("⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣛⠛⠛⠛⠛⠛⢛⣿⣿⣿⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀");
-    println!("⠀⠀⠀⠀⠀⠿⣿⣿⣿⠿⠿⠀⠀⠀⠀⠀⠸⣿⣿⣿⣿⠿⠇⠀⠀⠀⠀⠀");
-    print!("\x1b[0m");
-    println!(" Gasmoxian Client (press CTRL + C to quit)");
-    println!();
-    if show_name {
-        println!(" Welcome!");
     }
 }

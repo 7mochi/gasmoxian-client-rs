@@ -5,6 +5,9 @@ edition = "2024"
 
 [dependencies]
 rusty_enet = "0.4"
+console = "0.16.3"
+indicatif = "0.18.4"
+dialoguer = "0.12.0"
 
 [target."cfg(unix)".dependencies]
 libc = "0.2"
