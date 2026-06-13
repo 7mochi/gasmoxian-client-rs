@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 description = "Gasmoxian OnlineCTR client — Rust port of the C++ Gasmoxian client for Crash Team Racing"
 authors = ["7mochi"]
-license = "MIT"
+license = "Unlicense"
 
 [dependencies]
 rusty_enet = "0.4"
