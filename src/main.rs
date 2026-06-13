@@ -1,14 +1,17 @@
 // GASMOX_CLIENT.cpp:1788-2064
+use anyhow::Result;
 use gasmoxian_client_rs::{
     console,
     enet::EnetClient,
     filter::contains_prohibited_name,
     protocol::{ClientState, NAME_LENGTH},
-    ps1mem::Ps1Mem,
-    state::{frame_stall, process_new_messages, discon_select, afk_timer, GameState, STATE_FUNCTIONS},
+    ps1_memory::Ps1Memory,
+    state::{
+        GameState, STATE_FUNCTIONS, afk_timer, discon_select, frame_stall, process_new_messages,
+    },
 };
 
-fn main() {
+fn main() -> Result<()> {
     console::print_banner();
 
     // Parse username
@@ -38,7 +41,7 @@ fn main() {
     console::info("Waiting for the Gasmoxian binary to load...");
 
     let ps1 = loop {
-        match Ps1Mem::connect() {
+        match Ps1Memory::connect() {
             Ok(mem) => break mem,
             Err(e) => {
                 console::err(format!("{}", e));
@@ -59,7 +62,7 @@ fn main() {
 
     // Copy name to PS1 OnlineCTR
     let len = name.iter().position(|&c| c == 0).unwrap_or(NAME_LENGTH);
-    let octr = ps1.octr_mut();
+    let octr = ps1.online_ctr_mut();
     octr.current_state = ClientState::LaunchEnterPid as i32;
     octr.name_buffer[0][..len].copy_from_slice(&name[..len]);
     octr.name_buffer[0][NAME_LENGTH] = 0;
@@ -67,8 +70,9 @@ fn main() {
 
     // Main loop
     loop {
-        ps1.octr_mut().windows_client_sync = ps1.octr().windows_client_sync.wrapping_add(1);
-        let state_idx = ps1.octr().current_state;
+        ps1.online_ctr_mut().windows_client_sync =
+            ps1.online_ctr().windows_client_sync.wrapping_add(1);
+        let state_idx = ps1.online_ctr().current_state;
 
         // AFK timer (only in character/engine selection)
         if state_idx >= ClientState::LobbyCharacterPick as i32
@@ -97,13 +101,15 @@ fn main() {
                             Ok(client) => {
                                 console::ok("Successfully connected!");
                                 net = Some(client);
-                                ps1.octr_mut().driver_id = 0xFF;
-                                ps1.octr_mut().current_state = ClientState::LaunchPickRoom as i32;
+                                ps1.online_ctr_mut().driver_id = 0xFF;
+                                ps1.online_ctr_mut().current_state =
+                                    ClientState::LaunchPickRoom as i32;
                                 continue;
                             }
                             Err(e) => {
                                 console::err(format!("Failed to connect! ({})", e));
-                                ps1.octr_mut().current_state = ClientState::LaunchPickServer as i32;
+                                ps1.online_ctr_mut().current_state =
+                                    ClientState::LaunchPickServer as i32;
                                 continue;
                             }
                         }

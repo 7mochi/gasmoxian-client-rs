@@ -1,5 +1,6 @@
 // mods/Windows/Gasmoxian/Network_PC/GClient/GASMOX_CLIENT.cpp:872-1031
 
+/// A hardcoded server entry with a hostname and port.
 pub struct ServerInfo {
     pub address: &'static str,
     pub port: u16,

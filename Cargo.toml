@@ -2,12 +2,16 @@
 name = "gasmoxian-client-rs"
 version = "0.1.0"
 edition = "2024"
+description = "Gasmoxian OnlineCTR client — Rust port of the C++ Gasmoxian client for Crash Team Racing"
+authors = ["7mochi"]
+license = "MIT"
 
 [dependencies]
 rusty_enet = "0.4"
 console = "0.16.3"
 indicatif = "0.18.4"
 dialoguer = "0.12.0"
+anyhow = "1"
 
 [target."cfg(unix)".dependencies]
 libc = "0.2"

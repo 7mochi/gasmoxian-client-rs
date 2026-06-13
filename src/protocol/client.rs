@@ -1,14 +1,19 @@
+/// Outbound message types sent from the client to the server (CG_ messages).
+///
+/// Each struct provides a `to_bytes()` method that packs its fields into
+/// the wire format expected by the Gasmoxian OnlineCTR server.
 use super::ClientMsg;
 
+#[derive(Debug, Clone, Copy)]
 pub struct EverythingKart {
     pub wumpa: u8,
     pub reserves: bool,
-    pub kart_rot1: u8,
-    pub kart_rot2: u8,
+    pub kart_rotation1: u8,
+    pub kart_rotation2: u8,
     pub button_hold: u8,
-    pub pos_x: i16,
-    pub pos_y: i16,
-    pub pos_z: i16,
+    pub position_x: i16,
+    pub position_y: i16,
+    pub position_z: i16,
 }
 impl EverythingKart {
     pub fn to_bytes(&self) -> [u8; 10] {
@@ -17,19 +22,20 @@ impl EverythingKart {
             | (self.reserves as u8) << 7;
         [
             b0,
-            self.kart_rot1,
-            self.kart_rot2,
+            self.kart_rotation1,
+            self.kart_rotation2,
             self.button_hold,
-            self.pos_x.to_le_bytes()[0],
-            self.pos_x.to_le_bytes()[1],
-            self.pos_y.to_le_bytes()[0],
-            self.pos_y.to_le_bytes()[1],
-            self.pos_z.to_le_bytes()[0],
-            self.pos_z.to_le_bytes()[1],
+            self.position_x.to_le_bytes()[0],
+            self.position_x.to_le_bytes()[1],
+            self.position_y.to_le_bytes()[0],
+            self.position_y.to_le_bytes()[1],
+            self.position_z.to_le_bytes()[0],
+            self.position_z.to_le_bytes()[1],
         ]
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MessageWeapon {
     pub juiced: bool,
     pub flags: u8,
@@ -53,6 +59,7 @@ impl Header {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MessageRoom {
     pub room: u8,
 }
@@ -62,6 +69,7 @@ impl MessageRoom {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MessageRoomType {
     pub room_type: u8,
     pub r_type_locked: u8,
@@ -76,10 +84,11 @@ impl MessageRoomType {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MessageRoomTypePassword {
     pub room_type: u8,
     pub r_type_locked: u8,
-    pub seq: [u8; 8],
+    pub sequence: [u8; 8],
 }
 impl MessageRoomTypePassword {
     pub fn to_bytes(&self) -> [u8; 11] {
@@ -87,23 +96,25 @@ impl MessageRoomTypePassword {
         buf[0] = (ClientMsg::RoomType as u8) & 0x0F;
         buf[1] = self.room_type;
         buf[2] = self.r_type_locked;
-        buf[3..11].copy_from_slice(&self.seq);
+        buf[3..11].copy_from_slice(&self.sequence);
         buf
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MessagePassword {
-    pub seq: [u8; 8],
+    pub sequence: [u8; 8],
 }
 impl MessagePassword {
     pub fn to_bytes(&self) -> [u8; 9] {
         let mut buf = [0u8; 9];
         buf[0] = (ClientMsg::Password as u8) & 0x0F;
-        buf[1..9].copy_from_slice(&self.seq);
+        buf[1..9].copy_from_slice(&self.sequence);
         buf
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MessageName {
     pub name: [u8; 12],
 }
@@ -116,6 +127,7 @@ impl MessageName {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MessageTrack {
     pub track_id: u8,
     pub lap_id: u8,
@@ -130,6 +142,7 @@ impl MessageTrack {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MessageSpecial {
     pub gamemodes: [bool; 18],
 }
@@ -144,42 +157,46 @@ impl MessageSpecial {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MessageCharacter {
     pub character_id: u8,
-    pub bool_locked_in: bool,
+    pub locked_in: bool,
 }
 impl MessageCharacter {
     pub fn to_bytes(&self) -> [u8; 2] {
         [
             (ClientMsg::Character as u8) & 0x0F | (self.character_id & 0x0F) << 4,
-            self.bool_locked_in as u8,
+            self.locked_in as u8,
         ]
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MessageEngine {
-    pub enginetype: u8,
-    pub bool_locked_in: bool,
+    pub engine_type: u8,
+    pub locked_in: bool,
 }
 impl MessageEngine {
     pub fn to_bytes(&self) -> [u8; 3] {
         [
             (ClientMsg::Engine as u8) & 0x0F,
-            (self.enginetype & 0x0F) | ((self.bool_locked_in as u8) & 1) << 4,
+            (self.engine_type & 0x0F) | ((self.locked_in as u8) & 1) << 4,
             0,
         ]
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MessageWarpclock {
-    pub warpclock: u8,
+    pub warp_clock: u8,
 }
 impl MessageWarpclock {
     pub fn to_bytes(&self) -> [u8; 1] {
-        [((ClientMsg::Warpclock as u8) & 0x0F) | ((self.warpclock & 0x03) << 6)]
+        [((ClientMsg::Warpclock as u8) & 0x0F) | ((self.warp_clock & 0x03) << 6)]
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MessageFinishTimer {
     pub finish_timer: u8,
 }
@@ -192,6 +209,7 @@ impl MessageFinishTimer {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MessageEndRace {
     pub course_time: i32,
     pub lap_time: i32,

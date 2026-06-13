@@ -112,6 +112,7 @@ dependencies = [
 name = "gasmoxian-client-rs"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "console",
  "dialoguer",
  "indicatif",

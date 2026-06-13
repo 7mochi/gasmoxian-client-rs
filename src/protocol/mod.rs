@@ -1,16 +1,20 @@
-pub const GASMOXIAN_VER: i32 = 3;
+/// OnlineCTR protocol types and constants.
+///
+/// This module defines the shared-memory layout (`OnlineCTR`, `RaceStats`, `Gamepad`),
+/// the network protocol enums (`ClientState`, `ServerMsg`, `ClientMsg`), and
+/// sub-modules for packing/unpacking individual CG_ and SG_ messages.
+///
+/// Layouts must match exactly with the C++ original compiled with MinGW32/GCC
+/// bitfield rules (fields spanning beyond remaining byte go to the next byte).
+
+pub const GASMOXIAN_VERSION: i32 = 3;
 pub const LOBBY_LEVEL_ID: i32 = 38;
 pub const NAME_LENGTH: usize = 11;
 pub const MAX_NUM_PLAYERS_NORMAL: usize = 8;
 pub const MAX_NUM_PLAYERS_TOURNAMENT: usize = 4;
 pub const MAX_NUM_PLAYERS: usize = MAX_NUM_PLAYERS_NORMAL;
-pub const DEFAULT_IP: &str = "127.0.0.1";
-pub const IP_ADDRESS_SIZE: usize = 16;
-pub const PORT_SIZE: usize = 6;
 pub const DRIVER_COURSE_OFFSET: u32 = 0x514;
 pub const DRIVER_BESTLAP_OFFSET: u32 = 0x63C;
-pub const SHMEM_SIZE: usize = 0x800000;
-pub const OCTR_OFFSET: usize = 0x8000C000 & 0xFFFFFF;
 
 pub mod client;
 pub mod server;
@@ -40,6 +44,10 @@ pub struct Gamepad {
     pub buttons_held_prev_frame: i32,
 }
 
+/// Shared-memory OnlineCTR struct, mapped at `0x8000C000` in PS1 RAM.
+///
+/// Written by the emulated PS1 (Gasmoxian binary) every frame and read/written
+/// by the PC client. Must fit in 1024 bytes (`0x400`).
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct OnlineCTR {
@@ -85,7 +93,7 @@ pub struct OnlineCTR {
     pub auto_retry_join_room_index: i32,
     pub gamemodes: [bool; 18],
     pub room_type: u8,
-    pub r_type_locked: u8,
+    pub room_type_locked: u8,
     pub room_password_sequence: [u8; 8],
     pub password_entered: [u8; 8],
 }
@@ -99,6 +107,8 @@ pub struct ShootSlot {
     pub now: u8,
 }
 
+/// State machine index used by the client's main loop to dispatch
+/// the appropriate `StateFn`.
 #[repr(i32)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ClientState {
@@ -143,6 +153,7 @@ pub enum GameMode {
     WallDrive,
 }
 
+/// Packet type identifiers for server-to-client messages (SG_ / Server Give).
 #[repr(u8)]
 pub enum ServerMsg {
     Rooms = 0,
@@ -165,6 +176,7 @@ pub enum ServerMsg {
     PasswordRejected,
 }
 
+/// Packet type identifiers for client-to-server messages (CG_ / Client Give).
 #[repr(u8)]
 pub enum ClientMsg {
     JoinRoom = 0,
