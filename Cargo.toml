@@ -1,0 +1,17 @@
+[package]
+name = "gasmoxian-client-rs-v2"
+version = "0.1.0"
+edition = "2024"
+authors = ["7mochi"]
+
+[dependencies]
+anyhow = "1.0.102"
+console = "0.16.3"
+deku = "0.20.3"
+dialoguer = "0.12.0"
+num-derive = "0.4.2"
+num-traits = "0.2.19"
+rusty_enet = "0.4.0"
+
+[target."cfg(unix)".dependencies]
+libc = "0.2"
