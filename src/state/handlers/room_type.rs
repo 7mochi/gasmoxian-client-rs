@@ -21,7 +21,7 @@ pub fn handle(
             "Room type is password protected, waiting for password input.",
         ));
 
-        state.flags.password_sent = false;
+        state.race.flags.password_sent = false;
 
         ps1_memory.online_ctr_mut().current_state = ClientState::LaunchEnterPassword as i32;
     }

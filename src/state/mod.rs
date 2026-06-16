@@ -36,34 +36,50 @@ pub struct RaceFlags {
     pub packet_already_sent: bool,
 }
 
-#[derive(Debug)]
-pub struct GameState {
-    pub connection_attempt: i32,
+#[derive(Debug, Default)]
+pub struct Connection {
+    pub attempt: i32,
     pub server_addr: Option<SocketAddr>,
     pub static_server_id: i32,
     pub static_room_id: i32,
+}
 
+#[derive(Debug, Default)]
+pub struct Race {
     pub count_frame: i32,
     pub time_start: f64,
     pub warpclock_delay: f64,
     pub square_delay: [u64; MAX_NUM_PLAYERS],
     // TODO: change this when we figure out what the timers are representing
     pub timers: [f64; 2],
-
-    pub flags: RaceFlags,
-    pub previous_selection: PlayerSelection,
     pub extra_laps: i32,
+    pub flags: RaceFlags,
+}
 
-    pub previous_warpclock: Option<i32>,
-    pub previous_special: Option<i32>,
-    pub previous_finish_timer: Option<i32>,
+#[derive(Debug, Default)]
+pub struct PreviousInput {
+    pub warpclock: Option<i32>,
+    pub special: Option<i32>,
+    pub finish_timer: Option<i32>,
     // TODO: change this when we figure out what buttons the indexes of the array are representing
-    pub previous_buttons: [i32; PREVIOUS_BUTTONS_SIZE],
+    pub buttons: [i32; PREVIOUS_BUTTONS_SIZE],
+}
 
+#[derive(Debug, Default)]
+pub struct Lobby {
     pub username: String,
     pub required_players: i32,
     pub disconnected_players: i32,
     pub active_players: i32,
+}
+
+#[derive(Debug)]
+pub struct GameState {
+    pub connection: Connection,
+    pub race: Race,
+    pub previous: PreviousInput,
+    pub lobby: Lobby,
+    pub previous_selection: PlayerSelection,
 }
 
 impl Default for GameState {
@@ -75,39 +91,24 @@ impl Default for GameState {
 impl GameState {
     pub fn new() -> Self {
         Self {
-            connection_attempt: 0,
-            count_frame: 0,
-            static_server_id: 0,
-            static_room_id: 0,
-            server_addr: None,
-
-            time_start: 0.0,
-            warpclock_delay: 0.0,
-            square_delay: [0; MAX_NUM_PLAYERS],
-            timers: [0.0, 0.0],
-
-            flags: RaceFlags::default(),
+            connection: Connection::default(),
+            race: Race::default(),
+            previous: PreviousInput::default(),
+            lobby: Lobby::default(),
             previous_selection: PlayerSelection::default(),
-            extra_laps: 0,
-
-            previous_warpclock: None,
-            previous_special: None,
-            previous_finish_timer: None,
-            previous_buttons: [0; PREVIOUS_BUTTONS_SIZE],
-
-            username: String::new(),
-            required_players: 0,
-            disconnected_players: 0,
-            active_players: 0,
         }
     }
 }
 
 pub fn process_network_messages(
     ps1_memory: &mut Ps1Memory,
-    net: &mut EnetClient,
+    net: Option<&mut EnetClient>,
     state: &mut GameState,
 ) {
+    let net = match net {
+        Some(n) => n,
+        None => return,
+    };
     while let Ok(Some(event)) = net.poll() {
         match event {
             Event::Receive { packet, .. } => {
@@ -116,7 +117,7 @@ pub fn process_network_messages(
             Event::Disconnect { .. } => {
                 console::err("Connection Dropped (Server Full or Server Offline)...");
 
-                state.flags.password_sent = false;
+                state.race.flags.password_sent = false;
 
                 ps1_memory.online_ctr_mut().current_state = -1;
             }
@@ -133,16 +134,18 @@ pub fn frame_stall(ps1_memory: &mut Ps1Memory) {
     ps1_memory.online_ctr_mut().ready_to_send = 0;
 }
 
-pub fn disconnect(ps1_memory: &mut Ps1Memory, net: &mut EnetClient, state: &mut GameState) {
+pub fn disconnect(ps1_memory: &mut Ps1Memory, net: Option<&mut EnetClient>, state: &mut GameState) {
     let hold = ps1_memory
         .read_u32(GAMEPAD_BASE + 0x10)
         .expect("GAMEPAD_BASE is within shared memory bounds");
 
     if (hold & 0x2000) != 0 {
         console::info("Disconnected from server (the player pressed DSELECT)");
-        net.disconnect_now();
+        if let Some(net) = net {
+            net.disconnect_now();
+        }
 
-        state.flags.lock_engine_and_character = false;
+        state.race.flags.lock_engine_and_character = false;
 
         ps1_memory.online_ctr_mut().auto_retry_join_room_index = -1;
         ps1_memory.online_ctr_mut().room_type = 0;
@@ -151,14 +154,14 @@ pub fn disconnect(ps1_memory: &mut Ps1Memory, net: &mut EnetClient, state: &mut 
     }
 }
 
-pub fn afk_timer(ps1_memory: &mut Ps1Memory, net: &mut EnetClient, state: &mut GameState) {
-    if !state.flags.lock_engine_and_character {
-        state.time_start = 0.0;
+pub fn afk_timer(ps1_memory: &mut Ps1Memory, net: Option<&mut EnetClient>, state: &mut GameState) {
+    if !state.race.flags.lock_engine_and_character {
+        state.race.time_start = 0.0;
         return;
     }
 
-    if state.time_start == 0.0 {
-        state.time_start = SystemTime::now()
+    if state.race.time_start == 0.0 {
+        state.race.time_start = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("system time is before Unix epoch")
             .as_secs_f64();
@@ -169,23 +172,25 @@ pub fn afk_timer(ps1_memory: &mut Ps1Memory, net: &mut EnetClient, state: &mut G
         .duration_since(UNIX_EPOCH)
         .expect("system time is before Unix epoch")
         .as_secs_f64();
-    if (now - state.time_start) >= AFK_TIMEOUT {
-        if !state.flags.lock_engine_and_character {
-            state.time_start = 0.0;
+    if (now - state.race.time_start) >= AFK_TIMEOUT {
+        if !state.race.flags.lock_engine_and_character {
+            state.race.time_start = 0.0;
             return;
         }
         console::err("Kicked for AFK");
-        net.disconnect_now();
+        if let Some(net) = net {
+            net.disconnect_now();
+        }
 
         ps1_memory.online_ctr_mut().room_type = 0;
         ps1_memory.online_ctr_mut().room_type_locked = 0;
         ps1_memory.online_ctr_mut().current_state = -1;
-        state.flags.lock_engine_and_character = false;
-        state.time_start = 0.0;
+        state.race.flags.lock_engine_and_character = false;
+        state.race.time_start = 0.0;
     }
 }
 
-pub fn launch_enter_pid(ps1: &mut Ps1Memory, _net: &mut EnetClient, _state: &mut GameState) {
+pub fn launch_enter_pid(ps1: &mut Ps1Memory, _net: Option<&mut EnetClient>, _state: &mut GameState) {
     if ps1.online_ctr().is_booted_ps1 == 0 {
         return;
     }
@@ -201,7 +206,7 @@ pub fn launch_enter_pid(ps1: &mut Ps1Memory, _net: &mut EnetClient, _state: &mut
     ps1.online_ctr_mut().current_state = ClientState::LaunchPickServer as i32;
 }
 
-pub fn launch_pick_server(ps1: &mut Ps1Memory, _net: &mut EnetClient, state: &mut GameState) {
+pub fn launch_pick_server(ps1: &mut Ps1Memory, _net: Option<&mut EnetClient>, state: &mut GameState) {
     // quit if disconnected but not loaded, back into the selection screen yet
     let level_id = ps1
         .read_u32(GAMEMODE.wrapping_add(0x1a10))
@@ -239,11 +244,11 @@ pub fn launch_pick_server(ps1: &mut Ps1Memory, _net: &mut EnetClient, state: &mu
     let server = &SERVERS[server_country];
 
     if let Some(addr) = server.resolve() {
-        state.server_addr = Some(addr);
+        state.connection.server_addr = Some(addr);
     } else {
         return;
     }
-    state.static_server_id = server_country as i32;
+    state.connection.static_server_id = server_country as i32;
 
     console::info(format!("Ready to connect to {}", server.endpoint));
 

@@ -43,19 +43,18 @@ fn main() -> anyhow::Result<()> {
 
     console::info("DuckStation shared memory found, starting client...");
 
-    let mut dummy = EnetClient::dummy()?;
     let mut net: Option<EnetClient> = None;
     let mut gamestate = GameState::new();
 
     // Copy the username into the gamestate, truncating it if it's too long
-    gamestate.username = username.chars().take(MAX_NAME_LENGTH).collect();
+    gamestate.lobby.username = username.chars().take(MAX_NAME_LENGTH).collect();
     console::debug(format!(
         "Username set to \"{}\" ({} chars)",
-        gamestate.username,
-        gamestate.username.len()
+        gamestate.lobby.username,
+        gamestate.lobby.username.len()
     ));
 
-    let name_bytes = gamestate.username.as_bytes();
+    let name_bytes = gamestate.lobby.username.as_bytes();
     let len = name_bytes
         .iter()
         .position(|&c| c == 0)
@@ -86,24 +85,22 @@ fn main() -> anyhow::Result<()> {
             prev_state_idx = state_idx;
         }
 
-        let current_net = net.as_mut().unwrap_or(&mut dummy);
-
         // afk timer (only in character/engine selection)
         if state_idx >= ClientState::LobbyCharacterPick as i32
             && state_idx < ClientState::LobbyWaitForLoading as i32
         {
-            state::afk_timer(&mut ps1_memory, current_net, &mut gamestate);
+            state::afk_timer(&mut ps1_memory, net.as_mut(), &mut gamestate);
         }
 
         // disconnect check
         if state_idx >= ClientState::LaunchPickRoom as i32 {
-            state::disconnect(&mut ps1_memory, current_net, &mut gamestate);
+            state::disconnect(&mut ps1_memory, net.as_mut(), &mut gamestate);
         }
 
         if let Some(current_state) = ClientState::from_i32(state_idx) {
             match current_state {
                 ClientState::LaunchPickRoom => {
-                    if let Some(addr) = gamestate.server_addr.take() {
+                    if let Some(addr) = gamestate.connection.server_addr.take() {
                         console::debug(format!("Attempting connection to {}", addr));
                         match EnetClient::new(addr) {
                             Ok(client) => {
@@ -127,11 +124,11 @@ fn main() -> anyhow::Result<()> {
                 }
 
                 ClientState::LaunchEnterPid => {
-                    state::launch_enter_pid(&mut ps1_memory, current_net, &mut gamestate);
+                    state::launch_enter_pid(&mut ps1_memory, net.as_mut(), &mut gamestate);
                 }
 
                 ClientState::LaunchPickServer => {
-                    state::launch_pick_server(&mut ps1_memory, current_net, &mut gamestate);
+                    state::launch_pick_server(&mut ps1_memory, net.as_mut(), &mut gamestate);
                 }
 
                 _ => {}
@@ -139,9 +136,7 @@ fn main() -> anyhow::Result<()> {
         }
 
         // process network messages
-        if let Some(ref mut n) = net {
-            state::process_network_messages(&mut ps1_memory, n, &mut gamestate);
-        }
+        state::process_network_messages(&mut ps1_memory, net.as_mut(), &mut gamestate);
 
         // frame sync
         state::frame_stall(&mut ps1_memory);

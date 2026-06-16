@@ -28,12 +28,6 @@ fn create_host(addr: SocketAddr) -> Result<(enet::Host<UdpSocket>, enet::PeerID)
 }
 
 impl EnetClient {
-    pub fn dummy() -> Result<Self> {
-        let addr = SocketAddr::from(([127, 0, 0, 1], 1));
-        let (host, peer_id) = create_host(addr)?;
-        Ok(EnetClient { host, peer_id })
-    }
-
     pub fn new(addr: SocketAddr) -> Result<Self> {
         let (host, peer_id) = create_host(addr)?;
         Ok(EnetClient { host, peer_id })

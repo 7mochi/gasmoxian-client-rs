@@ -10,8 +10,8 @@ pub fn handle(
     console::err("Wrong password, returning to room list.");
     net.disconnect_now();
 
-    state.flags.lock_engine_and_character = false;
-    state.flags.password_sent = false;
+    state.race.flags.lock_engine_and_character = false;
+    state.race.flags.password_sent = false;
 
     ps1_memory.online_ctr_mut().room_type = 0;
     ps1_memory.online_ctr_mut().room_type_locked = 0;

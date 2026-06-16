@@ -20,15 +20,15 @@ pub fn handle(
         console::info("Easter egg unlocked: Saffi fire unlocked in this room!");
     }
 
-    state.flags.password_sent = false;
-    state.flags.lock_engine_and_character = false;
-    state.flags.packet_already_sent = false;
-    state.flags.sent_warpclock = false;
-    state.previous_warpclock = Some(-1);
-    state.previous_special = Some(-1);
-    state.previous_finish_timer = Some(-1);
-    state.extra_laps = 0;
-    state.square_delay = [0; MAX_NUM_PLAYERS];
+    state.race.flags.password_sent = false;
+    state.race.flags.lock_engine_and_character = false;
+    state.race.flags.packet_already_sent = false;
+    state.race.flags.sent_warpclock = false;
+    state.previous.warpclock = Some(-1);
+    state.previous.special = Some(-1);
+    state.previous.finish_timer = Some(-1);
+    state.race.extra_laps = 0;
+    state.race.square_delay = [0; MAX_NUM_PLAYERS];
 
     ps1_memory.online_ctr_mut().driver_id = message.client_id;
     ps1_memory.online_ctr_mut().driver_count = message.client_count;
@@ -61,7 +61,7 @@ pub fn handle(
     }
 
     // send name to the server
-    let username_buffer = state.username.as_bytes();
+    let username_buffer = state.lobby.username.as_bytes();
     for i in 0..MAX_NAME_LENGTH {
         ps1_memory.online_ctr_mut().name_buffer[0][i] = username_buffer[i];
     }
