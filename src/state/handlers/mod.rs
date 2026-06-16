@@ -18,6 +18,31 @@ pub mod password_rejected;
 pub mod room_type;
 pub mod rooms;
 
+macro_rules! try_msg {
+    ($ty:ty, $handler:expr, $data:expr) => {
+        match <$ty>::from_bytes(($data, 0)) {
+            Ok((_, msg)) => {
+                if let Err(e) = $handler(msg) {
+                    console::err(format!("{}: {:?}", stringify!($handler), e));
+                }
+            }
+            Err(e) => console::debug(format!(
+                "failed to deserialize {}: {:?}",
+                stringify!($ty),
+                e
+            )),
+        }
+    };
+}
+
+macro_rules! try_handler {
+    ($handler:expr) => {
+        if let Err(e) = $handler {
+            console::err(format!("{}: {:?}", stringify!($handler), e));
+        }
+    };
+}
+
 pub fn process_receive_event(
     ps1_memory: &mut Ps1Memory,
     net: &mut EnetClient,
@@ -25,49 +50,22 @@ pub fn process_receive_event(
     data: &[u8],
 ) {
     let msg_type = ServerMessage::from_u8(data[0] & 0x0F).expect("invalid message type");
-    console::debug(format!(
-        "Received message type: [{:?}] {:?} ({} bytes)",
-        data,
-        msg_type,
-        data.len()
-    ));
 
     match msg_type {
         ServerMessage::Rooms => {
-            if let Ok((_, message)) = Rooms::from_bytes((data, 0)) {
-                if let Err(e) = rooms::handle(ps1_memory, state, message) {
-                    console::err(format!("Failed to handle rooms message: {:?}", e));
-                }
-            }
+            try_msg!(Rooms, |msg| rooms::handle(ps1_memory, state, msg), data);
         }
         ServerMessage::RoomType => {
-            if let Ok((_, message)) = RoomType::from_bytes((data, 0)) {
-                if let Err(e) = room_type::handle(ps1_memory, state, message) {
-                    console::err(format!("Failed to handle room type message: {:?}", e));
-                }
-            }
+            try_msg!(RoomType, |msg| room_type::handle(ps1_memory, state, msg), data);
         }
         ServerMessage::PasswordRejected => {
-            if let Err(e) = password_rejected::handle(ps1_memory, net, state) {
-                console::err(format!(
-                    "Failed to handle password rejected message: {:?}",
-                    e
-                ));
-            }
+            try_handler!(password_rejected::handle(ps1_memory, net, state));
         }
         ServerMessage::NewClient => {
-            if let Ok((_, message)) = ClientStatus::from_bytes((data, 0)) {
-                if let Err(e) = new_client::handle(ps1_memory, net, state, message) {
-                    console::err(format!("Failed to handle new client message: {:?}", e));
-                }
-            }
+            try_msg!(ClientStatus, |msg| new_client::handle(ps1_memory, net, state, msg), data);
         }
         ServerMessage::Name => {
-            if let Ok((_, message)) = Name::from_bytes((data, 0)) {
-                if let Err(e) = name::handle(ps1_memory, message) {
-                    console::err(format!("Failed to handle name message: {:?}", e));
-                }
-            }
+            try_msg!(Name, |msg| name::handle(ps1_memory, msg), data);
         }
         _ => {}
     }
