@@ -19,6 +19,12 @@ pub struct StartRace {
     _msg_type: u8,
 }
 
+impl Default for StartRace {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StartRace {
     pub fn new() -> Self {
         Self {

@@ -10,7 +10,7 @@ use crate::{
     console,
     enet::EnetClient,
     protocol::{
-        ClientMessage, ClientState,
+        ClientState,
         Gamemode::{self},
         MAX_NUM_PLAYERS,
         client::{
@@ -294,13 +294,11 @@ pub fn launch_enter_password(
     }
 
     let mut sequence = [0u8; 8];
-    for i in 0..8 {
-        sequence[i] = ps1_memory.online_ctr().room_password_sequence[i];
-    }
+    sequence.copy_from_slice(&ps1_memory.online_ctr().room_password_sequence);
 
     let client_message = Password::new(sequence)
-    .to_bytes()
-    .expect("Failed to serialize password message");
+        .to_bytes()
+        .expect("Failed to serialize password message");
 
     net.send_reliable(&client_message)
         .expect("Failed to send password message");
@@ -335,9 +333,7 @@ pub fn lobby_assign_role(
 
     if room_type == 2 {
         let mut sequence = [0u8; 8];
-        for i in 0..8 {
-            sequence[i] = ps1_memory.online_ctr().room_password_sequence[i];
-        }
+        sequence.copy_from_slice(&ps1_memory.online_ctr().room_password_sequence);
 
         let client_message = RoomTypePassword::new(room_type, room_type_locked, sequence)
             .to_bytes()
@@ -442,9 +438,7 @@ pub fn lobby_special_pick(
     }
 
     let mut gamemodes = [false; 18];
-    for i in 0..18 {
-        gamemodes[i] = ps1_memory.online_ctr().gamemodes[i];
-    }
+    gamemodes.copy_from_slice(&ps1_memory.online_ctr().gamemodes);
 
     // always ensure GameMode::Normal is enabled
     gamemodes[Gamemode::Normal as usize] = true;
@@ -480,7 +474,7 @@ pub fn lobby_host_track_pick(
         )
     };
 
-    let num_laps = if lap_id >= 4 && lap_id <= 15 {
+    let num_laps = if (4..=15).contains(&lap_id) {
         let lap_values = [10, 15, 20, 25, 30, 35, 40, 50, 69, 80, 90, 127];
         lap_values[(lap_id - 4) as usize]
     } else {

@@ -5,7 +5,7 @@ use crate::protocol::client::Name;
 use crate::{
     console,
     enet::EnetClient,
-    protocol::{ClientMessage, MAX_NAME_LENGTH, MAX_NUM_PLAYERS, server::ClientStatus},
+    protocol::{MAX_NAME_LENGTH, MAX_NUM_PLAYERS, server::ClientStatus},
     ps1_memory::Ps1Memory,
     state::GameState,
 };

@@ -48,6 +48,7 @@ pub struct Kart {
 }
 
 impl Kart {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         wumpa: u8,
         reserves: bool,
