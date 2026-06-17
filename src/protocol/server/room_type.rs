@@ -1,4 +1,4 @@
-/// Confirms the room type assigned to the player.
+/// Confirms the room type assignment.
 ///
 /// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
 /// |               0               |                  1                  |                   2                   |
@@ -11,14 +11,19 @@
 ///  Field           Bits   Offset     Description 
 ///  _msg_type       4      byte 0:0   ServerMessage::RoomType
 ///  _pad            4      byte 0:4   Unused
-///  room_type       8      byte 1:0   Room category (TODO: put values here)
-///  r_type_locked   8      byte 2:0   1 = room type is locked by host
+///  room_type       8      byte 1:0   0=normal, 1=tournament
+///  r_type_locked   8      byte 2:0   1=locked by host
 use deku::{DekuRead, DekuWrite};
 
 #[derive(Debug, Clone, DekuRead, DekuWrite)]
 #[deku(endian = "little")]
 pub struct RoomType {
-    #[deku(pad_bytes_before = "1")]
+    #[deku(bits = "4", ctx = "deku::ctx::Order::Lsb0")]
+    _msg_type: u8,
+
+    #[deku(pad_bits_after = "4")]
+    _pad: (),
+
     pub room_type: u8,
 
     pub r_type_locked: u8,

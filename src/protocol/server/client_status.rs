@@ -1,4 +1,4 @@
-/// Sent when a player joins or leaves the server lobby.
+/// Sent when a client joins or leaves the room.
 ///
 /// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+
 /// |               0               |                  1                  |
@@ -8,10 +8,10 @@
 /// |   _msg_type   |   client_id   |  client_count   |       _pad        |
 /// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+
 ///
-///  Field          Bits   Offset     Description
+///  Field          Bits   Offset     Description 
 ///  _msg_type      4      byte 0:0   ServerMessage::NewClient
-///  client_id      4      byte 0:4   Driver slot (0-7) of new/changed client
-///  client_count   4      byte 1:0   Total connected clients in room
+///  client_id      4      byte 0:4   Driver slot 0-7
+///  client_count   4      byte 1:0   Total clients in room
 ///  _pad           4      byte 1:4   Unused
 use deku::prelude::*;
 

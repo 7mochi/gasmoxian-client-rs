@@ -12,12 +12,16 @@
 ///  Field       Bits   Offset     Description 
 ///  _msg_type   4      byte 0:0   ServerMessage::Special
 ///  _pad        4      byte 0:4   Unused
-///  gamemodes   144    byte 1:0   18 boolean toggles (TODO: confirm values 0=Normal, 1=Mirror, …, 17=WallDrive)
+///  gamemodes   144    byte 1:0   18 toggles (0=Normal, 1=Mirror, 2=IcyTracks, etc.)
 use deku::prelude::*;
 
 #[derive(Debug, Clone, DekuRead, DekuWrite)]
 pub struct Special {
-    #[deku(pad_bytes_before = "1")]
+    #[deku(bits = "4", ctx = "deku::ctx::Order::Lsb0")]
+    _msg_type: u8,
+
+    #[deku(pad_bits_after = "4")]
+    _pad: (),
 
     #[deku(bytes = "1")]
     pub gamemodes: [bool; 18],

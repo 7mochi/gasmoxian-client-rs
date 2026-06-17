@@ -1,8 +1,17 @@
-/// TODO: is this correct? In CTR, certain tracks have a "warp clock" power-up that changes
-/// the race rules. This packet broadcasts the current warp clock state
-/// during a race.
+/// Warp clock state during a race.
 ///
-/// TODO: Table
+/// +---+---+---+---+---+---+------+-----+
+/// |                 0                  |
+/// +---+---+---+---+---+---+------+-----+
+/// | 0 | 1 | 2 | 3 | 4 | 5 |  6   |  7  |
+/// +---+---+---+---+---+---+------+-----+
+/// |   _msg_type   | _pad  | warp_clock |
+/// +---+---+---+---+---+---+------+-----+
+///
+///  Field        Bits   Offset     Description 
+///  _msg_type    4      byte 0:0   ServerMessage::Warpclock
+///  _pad         2      byte 0:4   Unused
+///  warp_clock   2      byte 0:6   Warp orb/clock event (0=inactive, 1=active)
 use deku::prelude::*;
 
 #[derive(Debug, Clone, DekuRead, DekuWrite)]

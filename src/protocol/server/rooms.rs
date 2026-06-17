@@ -1,6 +1,4 @@
-/// Sent periodically to update the room browser. Each nibble encodes the
-/// player count (0-7) for one of 16 room slots. The low nibble of each
-/// byte is client_count[i], the high nibble is client_count[i+1].
+/// Sent periodically to update the room browser.
 ///
 /// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
 /// |               0               |                  1                  |                   2                   |                   3                   |                   4                   |                   5                   |                   6                   |                   7                   |                   8                   |                   9                   |                  10                   |                  11                   |
@@ -13,14 +11,19 @@
 ///  Field          Bits   Offset     Description 
 ///  _msg_type      4      byte 0:0   ServerMessage::Rooms
 ///  _pad           4      byte 0:4   Unused
-///  room_count     8      byte 1:0   Number of rooms available
-///  version        16     byte 2:0   Server protocol version (little-endian)
-///  client_count   64     byte 4:0   16×4-bit packed player counts per room
+///  room_count     8      byte 1:0   Total rooms
+///  version        16     byte 2:0   Server version
+///  client_count   64     byte 4:0   Per-room player counts (4-bit packed)
 use deku::{DekuRead, DekuWrite};
 
 #[derive(Debug, Clone, DekuRead, DekuWrite)]
 pub struct Rooms {
-    #[deku(pad_bytes_before = "1")]
+    #[deku(bits = "4", ctx = "deku::ctx::Order::Lsb0")]
+    _msg_type: u8,
+
+    #[deku(pad_bits_after = "4")]
+    _pad: (),
+
     pub room_count: u8,
 
     #[deku(endian = "little")]

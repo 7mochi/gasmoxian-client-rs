@@ -1,5 +1,4 @@
-/// Sent when a new player joins or when the server confirms the room's player list.
-/// Contains the `client_id` and `client_count` packed in byte 1.
+/// Sent a player's name to all clients.
 ///
 /// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
 /// |               0               |                  1                  |                   2                   |                   3                   |                   4                   |                   5                   |                   6                   |                   7                   |                   8                   |                   9                   |                  10                   |                  11                   |                    12                     |                      13                       |
@@ -12,14 +11,19 @@
 ///  Field       Bits   Offset     Description 
 ///  _msg_type   4      byte 0:0   ServerMessage::Name
 ///  _pad        4      byte 0:4   Unused
-///  client_id   4      byte 1:0   Driver slot of the named player
-///  cl_count    4      byte 1:4   Total players in room
-///  username    96     byte 2:0   Player name, padded with zeros (MAX_NAME_LENGTH + 1 = 12 bytes)
+///  client_id   4      byte 1:0   Driver slot
+///  cl_count    4      byte 1:4   Total clients
+///  username    96     byte 2:0   Player name (12 bytes)
 use deku::prelude::*;
 
 #[derive(Debug, Clone, DekuRead, DekuWrite)]
 pub struct Name {
-    #[deku(pad_bytes_before = "1")]
+    #[deku(bits = "4", ctx = "deku::ctx::Order::Lsb0")]
+    _msg_type: u8,
+
+    #[deku(pad_bits_after = "4")]
+    _pad: (),
+
     #[deku(bits = "4", ctx = "deku::ctx::Order::Lsb0")]
     pub client_id: u8,
 

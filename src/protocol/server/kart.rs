@@ -1,5 +1,4 @@
-/// Periodic kart position/state update sent by the server while racing.
-/// Uses unreliable (unsequenced) enet delivery since old frames are disposable.
+/// Live kart state for race synchronization.
 ///
 /// +---+---+---+---+---+---+---+-----+---+---+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
 /// |                0                |                  1                  |                   2                   |                   3                   |                   4                   |                   5                   |                   6                   |                   7                   |                   8                   |                   9                   |
@@ -9,17 +8,17 @@
 /// |   _msg_type   |   wumpa   | rsv | client_id  |       kart_rot1        |               kart_rot2               |              button_hold              |                                  position_x                                   |                                  position_y                                   |                                  position_z                                   |
 /// +---+---+---+---+---+---+---+-----+---+---+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
 ///
-///  Field         Bits   Offset     Description
+///  Field         Bits   Offset     Description 
 ///  _msg_type     4      byte 0:0   ServerMessage::RaceData
-///  wumpa         3      byte 0:4   Wumpa fruit count
-///  rsv           1      byte 0:7   1 = reserves active
-///  client_id     3      byte 1:0   Driver slot (0-7)
-///  kart_rot1     5      byte 1:3   Rotation X
+///  wumpa         3      byte 0:4   Wumpa count (0-7)
+///  rsv           1      byte 0:7   1=boost reserves
+///  client_id     3      byte 1:0   Driver slot 0-7
+///  kart_rot1     5      byte 1:3   Rotation X (5-bit compressed)
 ///  kart_rot2     8      byte 2:0   Rotation Z
-///  button_hold   8      byte 3:0   Current button mask
-///  position_x    16     byte 4:0   World X (little-endian)
-///  position_y    16     byte 6:0   World Y (little-endian)
-///  position_z    16     byte 8:0   World Z (little-endian)
+///  button_hold   8      byte 3:0   Held buttons bitmask
+///  position_x    16     byte 4:0   World X (i16 LE)
+///  position_y    16     byte 6:0   World Y (i16 LE)
+///  position_z    16     byte 8:0   World Z (i16 LE)
 use deku::prelude::*;
 
 #[derive(Debug, Clone, DekuRead, DekuWrite)]

@@ -1,4 +1,4 @@
-/// Sent when a player picks up or uses a weapon item.
+/// Sent when a player fires a weapon.
 ///
 /// +---+---+---+---+---+---+---+-----+---+---+----+----+----+----+----+----+
 /// |                0                |                  1                  |
@@ -10,10 +10,10 @@
 ///
 ///  Field       Bits   Offset     Description 
 ///  _msg_type   4      byte 0:0   ServerMessage::Weapon
-///  client_id   3      byte 0:4   Driver slot (0-7)
+///  client_id   3      byte 0:4   Driver slot 0-7
 ///  jcd         1      byte 0:7   1 = juiced (powered-up) weapon
-///  weapon      4      byte 1:0   Weapon ID (TODO: confirm values 0=Bomb, 1=…..)
-///  flags       2      byte 1:4   Weapon flags (TODO: confirm values aim direction etc.)
+///  weapon      4      byte 1:0   Weapon ID (0=TurboBoost, 1=BowlingBoom, 2=TrackingMissile, etc.)
+///  flags       2      byte 1:4   Targeting flags
 ///  _pad        2      byte 1:6   Unused
 use deku::{DekuRead, DekuWrite};
 
