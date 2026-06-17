@@ -1,6 +1,8 @@
+use std::net::{SocketAddr, UdpSocket};
+use std::time::{Duration, Instant};
+
 use anyhow::{Context, Result};
 use rusty_enet as enet;
-use std::net::{SocketAddr, UdpSocket};
 
 pub struct EnetClient {
     host: enet::Host<UdpSocket>,
@@ -28,9 +30,29 @@ fn create_host(addr: SocketAddr) -> Result<(enet::Host<UdpSocket>, enet::PeerID)
 }
 
 impl EnetClient {
-    pub fn new(addr: SocketAddr) -> Result<Self> {
-        let (host, peer_id) = create_host(addr)?;
-        Ok(EnetClient { host, peer_id })
+    pub fn connect_with_handshake(addr: SocketAddr) -> Result<Self> {
+        let (mut host, peer_id) = create_host(addr)?;
+
+        let timeout = Duration::from_secs(3);
+        let start = Instant::now();
+
+        // wait up to 3 seconds for the enet connection handshake
+        while start.elapsed() < timeout {
+            match host.service() {
+                Ok(Some(enet::Event::Connect { .. })) => {
+                    return Ok(EnetClient { host, peer_id });
+                }
+                Ok(Some(_)) | Ok(None) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                    continue;
+                }
+                Err(e) => {
+                    return Err(anyhow::anyhow!("ENet handshake error: {:?}", e));
+                }
+            }
+        }
+
+        Err(anyhow::anyhow!("ENet connection timed out after 3s"))
     }
 
     pub fn ping(&mut self) {

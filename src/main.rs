@@ -100,30 +100,6 @@ fn main() -> anyhow::Result<()> {
         if let Some(current_state) = ClientState::from_i32(state_idx) {
             match current_state {
                 ClientState::LaunchPickRoom => {
-                    // first iteration: establish the enet connection
-                    if let Some(addr) = gamestate.connection.server_addr.take() {
-                        console::debug(format!("Attempting connection to {}", addr));
-                        match EnetClient::new(addr) {
-                            Ok(client) => {
-                                console::ok("Successfully connected!");
-                                net = Some(client);
-
-                                let online_ctr = ps1_memory.online_ctr_mut();
-                                online_ctr.driver_id = 0xFF;
-                                online_ctr.current_state = ClientState::LaunchPickRoom as i32;
-                                continue;
-                            }
-                            Err(e) => {
-                                console::err(format!("Failed to connect! ({})", e));
-
-                                ps1_memory.online_ctr_mut().current_state =
-                                    ClientState::LaunchPickServer as i32;
-                                continue;
-                            }
-                        }
-                    }
-
-                    // subsequent iterations: connected, poll rooms and join
                     state::launch_pick_room(&mut ps1_memory, net.as_mut(), &mut gamestate);
                 }
                 ClientState::LaunchEnterPid => {
@@ -131,8 +107,80 @@ fn main() -> anyhow::Result<()> {
                 }
                 ClientState::LaunchPickServer => {
                     state::launch_pick_server(&mut ps1_memory, &mut gamestate);
+
+                    if let Some(addr) = gamestate.connection.server_addr.take() {
+                        console::debug(format!("Attempting connection to {}", addr));
+
+                        let mut connected = false;
+                        for attempt in 1..=3 {
+                            match EnetClient::connect_with_handshake(addr) {
+                                Ok(client) => {
+                                    console::ok("Successfully connected!");
+                                    net = Some(client);
+                                    ps1_memory.online_ctr_mut().driver_id = 0xFF;
+                                    ps1_memory.online_ctr_mut().client_busy = 0;
+                                    ps1_memory.online_ctr_mut().current_state =
+                                        ClientState::LaunchPickRoom as i32;
+                                    connected = true;
+                                    break;
+                                }
+                                Err(_) => {
+                                    console::err(format!(
+                                        "Failed to connect! Attempt {}/3...",
+                                        attempt
+                                    ));
+                                }
+                            }
+                        }
+
+                        if !connected {
+                            ps1_memory.online_ctr_mut().server_lock_in1 = 0;
+                            ps1_memory.online_ctr_mut().current_state =
+                                ClientState::LaunchPickServer as i32;
+                            ps1_memory.online_ctr_mut().client_busy = 0;
+                            console::err("Returning to server selection.");
+                        }
+                    }
                 }
-                _ => {}
+                ClientState::LaunchError => {
+                    state::launch_error(&mut ps1_memory);
+                }
+                ClientState::LaunchEnterPassword => {
+                    state::launch_enter_password(&mut ps1_memory, net.as_mut(), &mut gamestate);
+                }
+                ClientState::LobbyAssignRole => {
+                    state::lobby_assign_role(&mut ps1_memory, net.as_mut(), &mut gamestate);
+                }
+                ClientState::LobbyHostTrackPick => {
+                    state::lobby_host_track_pick(&mut ps1_memory, net.as_mut(), &mut gamestate);
+                }
+                ClientState::LobbySpecialPick => {
+                    state::lobby_special_pick(&mut ps1_memory, net.as_mut(), &mut gamestate);
+                }
+                ClientState::LobbyCharacterPick => {
+                    state::lobby_character_pick(&mut ps1_memory, net.as_mut(), &mut gamestate);
+                }
+                ClientState::LobbyEnginePick => {
+                    state::lobby_engine_pick(&mut ps1_memory, net.as_mut(), &mut gamestate);
+                }
+                ClientState::LobbyGuestTrackWait => {
+                    state::lobby_guest_track_wait(&mut gamestate);
+                }
+                ClientState::LobbyWaitForLoading => {
+                    state::lobby_wait_for_loading();
+                }
+                ClientState::LobbyStartLoading => {
+                    state::lobby_start_loading(&mut ps1_memory, &mut gamestate);
+                }
+                ClientState::GameWaitForRace => {
+                    state::game_wait_for_race(&mut ps1_memory, net.as_mut(), &mut gamestate);
+                }
+                ClientState::GameStartRace => {
+                    state::game_start_race(&mut ps1_memory, net.as_mut(), &mut gamestate);
+                }
+                ClientState::GameEndRace => {
+                    state::game_end_race(&mut ps1_memory, net.as_mut(), &mut gamestate);
+                }
             }
         }
 

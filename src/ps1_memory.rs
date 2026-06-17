@@ -11,6 +11,7 @@ pub const LOBBY_LEVEL_ID: i8 = 38;
 pub const ONLINE_CTR_OFFSET: usize = 0x8000C000 & 0xFFFFFF;
 pub const SHARED_MEMORY_SIZE: usize = 0x800000;
 
+pub const CHARACTER_ID: u32 = 0x80086e84;
 pub const CHEATS: u32 = 0x80096b28;
 pub const GAMEPAD_BASE: u32 = 0x80096804;
 pub const GAMEMODE: u32 = 0x80096b20;
