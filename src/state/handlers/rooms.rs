@@ -1,50 +1,46 @@
 use crate::{
-    console,
+    effect::Effect,
     protocol::{ClientState, GASMOXIAN_VERSION, server::Rooms},
-    ps1_memory::Ps1Memory,
+    ps1_snapshot::OnlineCtrSnapshot,
     state::GameState,
 };
 
-pub fn handle(
-    ps1_memory: &mut Ps1Memory,
-    _state: &mut GameState,
-    message: Rooms,
-) -> anyhow::Result<()> {
-    console::debug(format!(
-        "Client server: {}, Server version: {}, rooms: {}, client_count: {:?}",
-        GASMOXIAN_VERSION, message.version, message.room_count, message.client_count
-    ));
-
-    ps1_memory.online_ctr_mut().pc_version = GASMOXIAN_VERSION as i32;
-    ps1_memory.online_ctr_mut().server_version = message.version as i32;
+pub fn handle(ctr: &OnlineCtrSnapshot, _state: &mut GameState, message: Rooms) -> Vec<Effect> {
+    let mut effects = vec![
+        Effect::LogDebug(format!(
+            "Client server: {}, Server version: {}, rooms: {}, client_count: {:?}",
+            GASMOXIAN_VERSION, message.version, message.room_count, message.client_count
+        )),
+        Effect::SetPcVersion(GASMOXIAN_VERSION as i32),
+        Effect::SetServerVersion(message.version as i32),
+    ];
 
     if message.version != GASMOXIAN_VERSION as u16 {
-        console::err(format!(
+        effects.push(Effect::LogErr(format!(
             "Version mismatch! Client version: {}, Server version: {}",
             GASMOXIAN_VERSION, message.version
-        ));
-
-        ps1_memory.online_ctr_mut().current_state = ClientState::LaunchError as i32;
-        return Ok(());
+        )));
+        effects.push(Effect::SetState(ClientState::LaunchError));
+        return effects;
     }
 
-    if ps1_memory.online_ctr().psx_version != GASMOXIAN_VERSION as i32 {
-        console::err(format!(
+    if ctr.psx_version != GASMOXIAN_VERSION as i32 {
+        effects.push(Effect::LogErr(format!(
             "PS1 version mismatch! Client version: {}, PS1 version: {}",
-            GASMOXIAN_VERSION,
-            ps1_memory.online_ctr().psx_version
-        ));
-
-        ps1_memory.online_ctr_mut().current_state = ClientState::LaunchError as i32;
-        return Ok(());
+            GASMOXIAN_VERSION, ctr.psx_version
+        )));
+        effects.push(Effect::SetState(ClientState::LaunchError));
+        return effects;
     }
 
-    ps1_memory.online_ctr_mut().server_lock_in2 = 0;
-    ps1_memory.online_ctr_mut().room_count = message.room_count;
+    effects.push(Effect::SetServerLockIn2(0));
+    effects.push(Effect::SetRoomCount(message.room_count));
 
+    let mut client_count = [0i8; 16];
     for i in 0..16 {
-        ps1_memory.online_ctr_mut().client_count[i] = message.client_count[i] as i8;
+        client_count[i] = message.client_count[i] as i8;
     }
+    effects.push(Effect::SetClientCount(client_count));
 
-    Ok(())
+    effects
 }

@@ -1,7 +1,5 @@
-use crate::{protocol::ClientState, ps1_memory::Ps1Memory};
+use crate::{effect::Effect, protocol::ClientState};
 
-pub fn handle(ps1_memory: &mut Ps1Memory) -> anyhow::Result<()> {
-    ps1_memory.online_ctr_mut().current_state = ClientState::LobbyStartLoading as i32;
-
-    Ok(())
+pub fn handle() -> Vec<Effect> {
+    vec![Effect::SetState(ClientState::LobbyStartLoading)]
 }

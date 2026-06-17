@@ -1,34 +1,46 @@
 use crate::{
+    effect::Effect,
     protocol::{ClientState, MAX_NAME_LENGTH, server::Name},
-    ps1_memory::{GAMEPAD_BASE, Ps1Memory},
+    ps1_memory::GAMEPAD_BASE,
+    ps1_snapshot::OnlineCtrSnapshot,
+    state::GameState,
 };
 
-pub fn handle(ps1_memory: &mut Ps1Memory, message: Name) -> anyhow::Result<()> {
-    let driver_id = ps1_memory.online_ctr().driver_id;
+pub fn handle(ctr: &OnlineCtrSnapshot, _state: &mut GameState, message: Name) -> Vec<Effect> {
+    let driver_id = ctr.driver_id;
     if message.client_id != driver_id {
         let slot = if message.client_id < driver_id {
-            message.client_id + 1
+            (message.client_id + 1) as usize
         } else {
-            message.client_id
-        } as usize;
+            message.client_id as usize
+        };
 
-        ps1_memory.online_ctr_mut().driver_count = message.client_count;
+        let mut name_data = [0u8; MAX_NAME_LENGTH + 1];
         for i in 0..MAX_NAME_LENGTH {
-            ps1_memory.online_ctr_mut().name_buffer[slot][i] = message.username[i];
+            name_data[i] = message.username[i];
         }
-        ps1_memory.online_ctr_mut().name_buffer[slot][MAX_NAME_LENGTH - 1] = 0;
+        name_data[MAX_NAME_LENGTH - 1] = 0;
+
+        let mut effects: Vec<Effect> = vec![
+            Effect::SetDriverCount(message.client_count),
+            Effect::SetNameBuffer {
+                slot,
+                data: name_data,
+            },
+        ];
 
         // handle disconnection - force SQUARE if name starts with 0
-        if message.username[0] == 0
-            || ps1_memory.online_ctr().current_state <= ClientState::LobbyWaitForLoading as i32
+        if message.username[0] == 0 || ctr.current_state <= ClientState::LobbyWaitForLoading as i32
         {
-            let gamepad_address = GAMEPAD_BASE + (slot as u32 * 0x50);
-            ps1_memory.write_u32(gamepad_address, 0x20)?;
-            ps1_memory.write_u32(gamepad_address + 0x4, 0)?;
-            ps1_memory.write_u32(gamepad_address + 0x8, 0)?;
-            ps1_memory.write_u32(gamepad_address + 0xC, 0x20)?;
+            let gp_addr = GAMEPAD_BASE + (slot as u32 * 0x50);
+            effects.push(Effect::WriteU32(gp_addr, 0x20));
+            effects.push(Effect::WriteU32(gp_addr + 0x4, 0));
+            effects.push(Effect::WriteU32(gp_addr + 0x8, 0));
+            effects.push(Effect::WriteU32(gp_addr + 0xC, 0x20));
         }
+
+        return effects;
     }
 
-    Ok(())
+    vec![]
 }

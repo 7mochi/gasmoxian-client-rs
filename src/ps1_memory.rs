@@ -48,8 +48,9 @@ impl std::error::Error for Ps1MemoryError {}
 fn find_duckstation_pid() -> Option<i32> {
     let directory = std::fs::read_dir("/dev/shm").ok()?;
     for entry in directory {
-        let name = entry.ok()?.file_name();
-        let name_str = name.to_string_lossy();
+        let Ok(entry) = entry else { continue };
+        let fname = entry.file_name();
+        let name_str = fname.to_string_lossy();
         if let Some(pid_str) = name_str.strip_prefix("duckstation_")
             && let Ok(pid) = pid_str.parse::<i32>()
         {

@@ -2,8 +2,7 @@ use deku::DekuContainerRead;
 use num_traits::FromPrimitive;
 
 use crate::{
-    console,
-    enet::EnetClient,
+    effect::Effect,
     protocol::{
         ServerMessage::{self},
         server::{
@@ -11,7 +10,7 @@ use crate::{
             Special, Track, WarpClock, Weapon,
         },
     },
-    ps1_memory::Ps1Memory,
+    ps1_snapshot::OnlineCtrSnapshot,
     state::GameState,
 };
 
@@ -32,110 +31,108 @@ pub mod track;
 pub mod warp_clock;
 pub mod weapon;
 
-macro_rules! try_msg {
-    ($ty:ty, $handler:expr, $data:expr) => {
-        match <$ty>::from_bytes(($data, 0)) {
-            Ok((_, msg)) => {
-                if let Err(e) = $handler(msg) {
-                    console::err(format!("{}: {:?}", stringify!($handler), e));
-                }
-            }
-            Err(e) => console::debug(format!(
-                "failed to deserialize {}: {:?}",
-                stringify!($ty),
-                e
-            )),
-        }
-    };
-}
-
-macro_rules! try_handler {
-    ($handler:expr) => {
-        if let Err(e) = $handler {
-            console::err(format!("{}: {:?}", stringify!($handler), e));
-        }
-    };
-}
-
 pub fn process_receive_event(
-    ps1_memory: &mut Ps1Memory,
-    net: &mut EnetClient,
+    ctr: &OnlineCtrSnapshot,
     state: &mut GameState,
     data: &[u8],
-) {
-    let msg_type = ServerMessage::from_u8(data[0] & 0x0F).expect("invalid message type");
+) -> Vec<Effect> {
+    let msg_type = match ServerMessage::from_u8(data[0] & 0x0F) {
+        Some(t) => t,
+        None => {
+            return vec![Effect::LogDebug(format!(
+                "unhandled message type: {}",
+                data[0] & 0x0F
+            ))];
+        }
+    };
 
     match msg_type {
-        ServerMessage::Rooms => {
-            try_msg!(Rooms, |msg| rooms::handle(ps1_memory, state, msg), data);
-        }
-        ServerMessage::RoomType => {
-            try_msg!(
-                RoomType,
-                |msg| room_type::handle(ps1_memory, state, msg),
-                data
-            );
-        }
-        ServerMessage::PasswordRejected => {
-            try_handler!(password_rejected::handle(ps1_memory, net, state));
-        }
-        ServerMessage::NewClient => {
-            try_msg!(
-                ClientStatus,
-                |msg| new_client::handle(ps1_memory, net, state, msg),
-                data
-            );
-        }
-        ServerMessage::Name => {
-            try_msg!(Name, |msg| name::handle(ps1_memory, msg), data);
-        }
-        ServerMessage::Track => {
-            try_msg!(Track, |msg| track::handle(ps1_memory, state, msg), data);
-        }
-        ServerMessage::Special => {
-            try_msg!(Special, |msg| special::handle(ps1_memory, msg), data);
-        }
-        ServerMessage::Character => {
-            try_msg!(Character, |msg| character::handle(ps1_memory, msg), data);
-        }
-        ServerMessage::Engine => {
-            try_msg!(Engine, |msg| engine::handle(ps1_memory, msg), data);
-        }
-        ServerMessage::StartLoading => {
-            try_handler!(start_loading::handle(ps1_memory));
-        }
-        ServerMessage::StartRace => {
-            try_handler!(start_race::handle(ps1_memory));
-        }
-        ServerMessage::RaceData => {
-            try_msg!(Kart, |msg| race_data::handle(ps1_memory, state, msg), data);
-        }
-        ServerMessage::Weapon => {
-            try_msg!(Weapon, |msg| weapon::handle(ps1_memory, msg), data);
-        }
-        ServerMessage::Warpclock => {
-            try_msg!(
-                WarpClock,
-                |msg| warp_clock::handle(ps1_memory, state, msg),
-                data
-            );
-        }
-        ServerMessage::FinishTimer => {
-            try_msg!(
-                FinishTimer,
-                |msg| finish_timer::handle(ps1_memory, state, msg),
-                data
-            );
-        }
-        ServerMessage::EndRace => {
-            try_msg!(
-                EndRace,
-                |msg| end_race::handle(ps1_memory, state, msg),
-                data
-            );
-        }
+        ServerMessage::Rooms => match Rooms::from_bytes((data, 0)) {
+            Ok((_, msg)) => rooms::handle(ctr, state, msg),
+            Err(e) => vec![Effect::LogDebug(format!(
+                "failed to deserialize Rooms: {e:?}"
+            ))],
+        },
+        ServerMessage::RoomType => match RoomType::from_bytes((data, 0)) {
+            Ok((_, msg)) => room_type::handle(ctr, state, msg),
+            Err(e) => vec![Effect::LogDebug(format!(
+                "failed to deserialize RoomType: {e:?}"
+            ))],
+        },
+        ServerMessage::PasswordRejected => password_rejected::handle(state),
+        ServerMessage::NewClient => match ClientStatus::from_bytes((data, 0)) {
+            Ok((_, msg)) => new_client::handle(ctr, state, msg),
+            Err(e) => vec![Effect::LogDebug(format!(
+                "failed to deserialize ClientStatus: {e:?}"
+            ))],
+        },
+        ServerMessage::Name => match Name::from_bytes((data, 0)) {
+            Ok((_, msg)) => name::handle(ctr, state, msg),
+            Err(e) => vec![Effect::LogDebug(format!(
+                "failed to deserialize Name: {e:?}"
+            ))],
+        },
+        ServerMessage::Track => match Track::from_bytes((data, 0)) {
+            Ok((_, msg)) => track::handle(ctr, state, msg),
+            Err(e) => vec![Effect::LogDebug(format!(
+                "failed to deserialize Track: {e:?}"
+            ))],
+        },
+        ServerMessage::Special => match Special::from_bytes((data, 0)) {
+            Ok((_, msg)) => special::handle(ctr, state, msg),
+            Err(e) => vec![Effect::LogDebug(format!(
+                "failed to deserialize Special: {e:?}"
+            ))],
+        },
+        ServerMessage::Character => match Character::from_bytes((data, 0)) {
+            Ok((_, msg)) => character::handle(ctr, state, msg),
+            Err(e) => vec![Effect::LogDebug(format!(
+                "failed to deserialize Character: {e:?}"
+            ))],
+        },
+        ServerMessage::Engine => match Engine::from_bytes((data, 0)) {
+            Ok((_, msg)) => engine::handle(ctr, state, msg),
+            Err(e) => vec![Effect::LogDebug(format!(
+                "failed to deserialize Engine: {e:?}"
+            ))],
+        },
+        ServerMessage::StartLoading => start_loading::handle(),
+        ServerMessage::StartRace => start_race::handle(),
+        ServerMessage::RaceData => match Kart::from_bytes((data, 0)) {
+            Ok((_, msg)) => race_data::handle(ctr, state, msg),
+            Err(e) => vec![Effect::LogDebug(format!(
+                "failed to deserialize Kart: {e:?}"
+            ))],
+        },
+        ServerMessage::Weapon => match Weapon::from_bytes((data, 0)) {
+            Ok((_, msg)) => weapon::handle(ctr, state, msg),
+            Err(e) => vec![Effect::LogDebug(format!(
+                "failed to deserialize Weapon: {e:?}"
+            ))],
+        },
+        ServerMessage::Warpclock => match WarpClock::from_bytes((data, 0)) {
+            Ok((_, msg)) => warp_clock::handle(ctr, state, msg),
+            Err(e) => vec![Effect::LogDebug(format!(
+                "failed to deserialize WarpClock: {e:?}"
+            ))],
+        },
+        ServerMessage::FinishTimer => match FinishTimer::from_bytes((data, 0)) {
+            Ok((_, msg)) => finish_timer::handle(ctr, state, msg),
+            Err(e) => vec![Effect::LogDebug(format!(
+                "failed to deserialize FinishTimer: {e:?}"
+            ))],
+        },
+        ServerMessage::EndRace => match EndRace::from_bytes((data, 0)) {
+            Ok((_, msg)) => end_race::handle(ctr, state, msg),
+            Err(e) => vec![Effect::LogDebug(format!(
+                "failed to deserialize EndRace: {e:?}"
+            ))],
+        },
         _ => {
-            console::debug(format!("unhandled message type: {:?}", msg_type));
+            vec![Effect::LogDebug(format!(
+                "unhandled message type: {:?}",
+                msg_type
+            ))]
         }
     }
 }

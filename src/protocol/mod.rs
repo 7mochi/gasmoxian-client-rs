@@ -35,7 +35,7 @@ pub const MAX_NAME_LENGTH: usize = 11;
 
 /// Per-player race stats stored in shared memory.
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RaceStats {
     /// Driver slot index
     pub slot: i32,
@@ -47,7 +47,7 @@ pub struct RaceStats {
 
 /// Per-player weapon/shoot slot stored in shared memory.
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ShootSlot {
     /// 1 = weapon is juiced (powered up)
     pub juiced: u8,
@@ -191,7 +191,7 @@ pub enum Gamemode {
 /// State machine values written to `OnlineCTR.current_state` by the PS1 binary.
 /// The client reads this field each frame to dispatch the correct handler.
 #[repr(i32)]
-#[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, FromPrimitive)]
 pub enum ClientState {
     /// PID entry screen
     LaunchEnterPid,

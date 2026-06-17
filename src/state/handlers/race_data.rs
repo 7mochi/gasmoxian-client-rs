@@ -1,30 +1,28 @@
 use crate::{
+    effect::Effect,
     protocol::{ClientState, server::Kart},
-    ps1_memory::{GAMEPAD_BASE, LOADING_STAGE, PSX_POINTER, Ps1Memory},
+    ps1_memory::GAMEPAD_BASE,
+    ps1_snapshot::OnlineCtrSnapshot,
     state::GameState,
 };
 
-pub fn handle(
-    ps1_memory: &mut Ps1Memory,
-    state: &mut GameState,
-    message: Kart,
-) -> anyhow::Result<()> {
-    if ps1_memory.online_ctr().current_state < ClientState::GameWaitForRace as i32 {
-        return Ok(());
+pub fn handle(ctr: &OnlineCtrSnapshot, state: &mut GameState, message: Kart) -> Vec<Effect> {
+    if ctr.current_state < ClientState::GameWaitForRace as i32 {
+        return vec![];
     }
-    if ps1_memory.read_u32(LOADING_STAGE)? != 0xFFFFFFFF {
-        return Ok(());
+    if ctr.loading_stage != 0xFFFFFFFF {
+        return vec![];
     }
 
-    let driver_id = ps1_memory.online_ctr().driver_id;
+    let driver_id = ctr.driver_id;
     if message.client_id == driver_id {
-        return Ok(());
+        return vec![];
     }
     let slot = if message.client_id < driver_id {
-        message.client_id + 1
+        (message.client_id + 1) as usize
     } else {
-        message.client_id
-    } as usize;
+        message.client_id as usize
+    };
 
     let mut current_button = message.button_hold as u32;
     if (current_button & 0x40) != 0 {
@@ -40,29 +38,35 @@ pub fn handle(
     state.previous.buttons[slot] = current_button as i32;
 
     let gamepad_address = GAMEPAD_BASE + (slot as u32 * 0x50);
-    ps1_memory.write_u32(gamepad_address, current_button)?;
-    ps1_memory.write_u32(gamepad_address + 0x4, !previous_button & current_button)?;
-    ps1_memory.write_u32(gamepad_address + 0x8, previous_button & !current_button)?;
-    ps1_memory.write_u32(gamepad_address + 0xC, previous_button)?;
 
-    let psx_pointer = ps1_memory.read_u32(PSX_POINTER + (slot as u32 * 4))? & 0xFFFFFF;
-    ps1_memory.write_u32(
-        psx_pointer + 0x2d4,
+    // race_data reads the other players' PSX_POINTER offsets dynamically,
+    // we need to read the slot psx_pointer: PSX_POINTER + (slot * 4)
+    let mut effects = vec![
+        Effect::WriteU32(gamepad_address, current_button),
+        Effect::WriteU32(gamepad_address + 0x4, !previous_button & current_button),
+        Effect::WriteU32(gamepad_address + 0x8, previous_button & !current_button),
+        Effect::WriteU32(gamepad_address + 0xC, previous_button),
+    ];
+
+    // Cada jugador tiene su propio psx_pointer en slot_psx_pointers[slot]
+    let slot_ptr = ctr.slot_psx_pointers[slot];
+    effects.push(Effect::WriteU32(
+        slot_ptr + 0x2d4,
         ((message.position_x as i32) * 256) as u32,
-    )?;
-    ps1_memory.write_u32(
-        psx_pointer + 0x2d8,
+    ));
+    effects.push(Effect::WriteU32(
+        slot_ptr + 0x2d8,
         ((message.position_y as i32) * 256) as u32,
-    )?;
-    ps1_memory.write_u32(
-        psx_pointer + 0x2dc,
+    ));
+    effects.push(Effect::WriteU32(
+        slot_ptr + 0x2dc,
         ((message.position_z as i32) * 256) as u32,
-    )?;
+    ));
 
     if message.reserves {
-        ps1_memory.write_u16(psx_pointer + 0x3e2, 200)?;
+        effects.push(Effect::WriteU16(slot_ptr + 0x3e2, 200));
     }
-    ps1_memory.write_u16(psx_pointer + 0x30, message.wumpa as u16)?;
+    effects.push(Effect::WriteU16(slot_ptr + 0x30, message.wumpa as u16));
 
-    Ok(())
+    effects
 }

@@ -3,21 +3,23 @@ use deku::DekuContainerWrite;
 use crate::protocol::ClientState;
 use crate::protocol::client::Name;
 use crate::{
-    console,
-    enet::EnetClient,
+    effect::Effect,
     protocol::{MAX_NAME_LENGTH, MAX_NUM_PLAYERS, server::ClientStatus},
-    ps1_memory::Ps1Memory,
+    ps1_snapshot::OnlineCtrSnapshot,
     state::GameState,
 };
 
 pub fn handle(
-    ps1_memory: &mut Ps1Memory,
-    net: &mut EnetClient,
+    ctr: &OnlineCtrSnapshot,
     state: &mut GameState,
     message: ClientStatus,
-) -> anyhow::Result<()> {
-    if ps1_memory.online_ctr().server_room == 15 {
-        console::info("Easter egg unlocked: Saffi fire unlocked in this room!");
+) -> Vec<Effect> {
+    let mut effects: Vec<Effect> = Vec::new();
+
+    if ctr.server_room == 15 {
+        effects.push(Effect::LogInfo(
+            "Easter egg unlocked: Saffi fire unlocked in this room!".into(),
+        ));
     }
 
     state.race.flags.password_sent = false;
@@ -30,42 +32,50 @@ pub fn handle(
     state.race.extra_laps = 0;
     state.race.square_delay = [0; MAX_NUM_PLAYERS];
 
-    ps1_memory.online_ctr_mut().driver_id = message.client_id;
-    ps1_memory.online_ctr_mut().driver_count = message.client_count;
-    ps1_memory.online_ctr_mut().locked_in_lap = 0;
-    ps1_memory.online_ctr_mut().locked_in_level = 0;
-    ps1_memory.online_ctr_mut().locked_in_engine = 0;
-    ps1_memory.online_ctr_mut().locked_in_special = 0;
-    ps1_memory.online_ctr_mut().lap_id = 0;
-    ps1_memory.online_ctr_mut().special = 0;
-    ps1_memory.online_ctr_mut().level_id = 0;
-    ps1_memory.online_ctr_mut().locked_in_character = 0;
-    ps1_memory.online_ctr_mut().drivers_ended_count = 0;
-    ps1_memory.online_ctr_mut().finish_race_timer = 0;
-    ps1_memory.online_ctr_mut().warpclock = 0;
+    effects.push(Effect::SetDriverId(message.client_id));
+    effects.push(Effect::SetDriverCount(message.client_count));
+    effects.push(Effect::SetLockedInLap(0));
+    effects.push(Effect::SetLockedInLevel(0));
+    effects.push(Effect::SetLockedInEngineByte(0));
+    effects.push(Effect::SetLockedInSpecial(0));
+    effects.push(Effect::SetLapId(0));
+    effects.push(Effect::SetSpecial(0));
+    effects.push(Effect::SetLevelId(0));
+    effects.push(Effect::SetLockedInCharacterByte(0));
+    effects.push(Effect::SetDriversEndedCount(0));
+    effects.push(Effect::SetFinishRaceTimer(0));
+    effects.push(Effect::SetWarpclock(0));
 
     for i in 0..MAX_NUM_PLAYERS {
-        ps1_memory.online_ctr_mut().locked_in_characters[i] = 0;
-        ps1_memory.online_ctr_mut().locked_in_engines[i] = 0;
-        ps1_memory.online_ctr_mut().race_stats[i].slot = 0;
-        ps1_memory.online_ctr_mut().race_stats[i].final_time = 0;
-        ps1_memory.online_ctr_mut().race_stats[i].best_lap = 0;
-        for j in 0..MAX_NAME_LENGTH {
-            ps1_memory.online_ctr_mut().name_buffer[i][j] = 0;
-        }
+        effects.push(Effect::SetLockedInCharacter { slot: i, value: 0 });
+        effects.push(Effect::SetLockedInEngine { slot: i, value: 0 });
+        effects.push(Effect::WriteRaceStats {
+            slot: i,
+            stats: crate::protocol::RaceStats {
+                slot: 0,
+                final_time: 0,
+                best_lap: 0,
+            },
+        });
+        let name_data = [0u8; MAX_NAME_LENGTH + 1];
+        effects.push(Effect::SetNameBuffer {
+            slot: i,
+            data: name_data,
+        });
     }
 
-    for i in 0..8 {
-        ps1_memory.online_ctr_mut().password_entered[i] = 0;
-        ps1_memory.online_ctr_mut().room_password_sequence[i] = 0;
-    }
+    effects.push(Effect::SetPasswordEntered([0u8; 8]));
+    effects.push(Effect::SetRoomPasswordSequence([0u8; 8]));
 
     // send name to the server
     let username_buffer = state.lobby.username.as_bytes();
     let name_len = username_buffer.len().min(MAX_NAME_LENGTH);
-    ps1_memory.online_ctr_mut().name_buffer[0][..name_len]
-        .copy_from_slice(&username_buffer[..name_len]);
-    ps1_memory.online_ctr_mut().name_buffer[0][MAX_NAME_LENGTH] = 0;
+    let mut name_data = [0u8; MAX_NAME_LENGTH + 1];
+    name_data[..name_len].copy_from_slice(&username_buffer[..name_len]);
+    effects.push(Effect::SetNameBuffer {
+        slot: 0,
+        data: name_data,
+    });
 
     let mut username = [0u8; 12];
     username[..name_len].copy_from_slice(&username_buffer[..name_len]);
@@ -74,10 +84,8 @@ pub fn handle(
         .to_bytes()
         .expect("Failed to serialize name message");
 
-    net.send_reliable(&client_message)
-        .expect("Failed to send name message");
+    effects.push(Effect::SendReliable(client_message));
+    effects.push(Effect::SetState(ClientState::LobbyAssignRole));
 
-    ps1_memory.online_ctr_mut().current_state = ClientState::LobbyAssignRole as i32;
-
-    Ok(())
+    effects
 }
