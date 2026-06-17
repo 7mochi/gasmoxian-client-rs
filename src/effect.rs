@@ -42,15 +42,9 @@ pub enum Effect {
     /// drivers_ended_count (racers who finished)
     SetDriversEndedCount(u8),
     /// Write the `now` field of a shoot slot
-    SetShootNow {
-        slot: usize,
-        value: u8,
-    },
+    SetShootNow { slot: usize, value: u8 },
     /// Write a race stats entry
-    WriteRaceStats {
-        slot: usize,
-        stats: RaceStats,
-    },
+    WriteRaceStats { slot: usize, stats: RaceStats },
 
     /// Write a byte at an absolute PS1 address
     WriteU8(u32, u8),
@@ -59,10 +53,7 @@ pub enum Effect {
     /// Write a 32-bit dword at an absolute PS1 address
     WriteU32(u32, u32),
     /// Write a byte buffer at an absolute PS1 address
-    WriteBytes {
-        addr: u32,
-        data: Vec<u8>,
-    },
+    WriteBytes { addr: u32, data: Vec<u8> },
 
     /// level_id (selected track)
     SetLevelId(u8),
@@ -96,25 +87,13 @@ pub enum Effect {
         data: [u8; MAX_NAME_LENGTH + 1],
     },
     /// Set a specific gamemode by index
-    SetGamemode {
-        index: usize,
-        value: bool,
-    },
+    SetGamemode { index: usize, value: bool },
     /// locked_in_characters[slot]
-    SetLockedInCharacter {
-        slot: usize,
-        value: i8,
-    },
+    SetLockedInCharacter { slot: usize, value: i8 },
     /// locked_in_engines[slot]
-    SetLockedInEngine {
-        slot: usize,
-        value: i8,
-    },
+    SetLockedInEngine { slot: usize, value: i8 },
     /// engine_type[slot]
-    SetEngineType {
-        slot: usize,
-        value: i8,
-    },
+    SetEngineType { slot: usize, value: i8 },
     /// warpclock
     SetWarpclock(u8),
     /// password_entered (full reset to 0)
@@ -122,10 +101,7 @@ pub enum Effect {
     /// room_password_sequence (full reset to 0)
     SetRoomPasswordSequence([u8; 8]),
     /// Write a full ShootSlot
-    SetShoot {
-        slot: usize,
-        shoot: ShootSlot,
-    },
+    SetShoot { slot: usize, shoot: ShootSlot },
 
     /// Force an immediate enet disconnect
     DisconnectNow,
