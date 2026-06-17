@@ -1,3 +1,10 @@
+//! Sans-IO state machine handlers.
+//!
+//! Each function in this module takes an [`OnlineCtrSnapshot`] (read-only)
+//! and optionally a mutable [`GameState`], then returns a `Vec<Effect>`.
+//! No function performs I/O directly. Effects are collected and executed
+//! later by [`io::exec_effects`].
+
 use std::{net::SocketAddr, time::Duration};
 
 use deku::DekuContainerWrite;
@@ -25,67 +32,113 @@ pub mod handlers;
 const PREVIOUS_BUTTONS_SIZE: usize = 8;
 const AFK_TIMEOUT: f64 = 80.0;
 
+/// Tracks the player's previous character and engine choices to detect
+/// changes and avoid sending duplicate messages.
 #[derive(Debug, Default)]
 pub struct PlayerSelection {
+    /// Previously sent character ID.
     pub character_id: Option<i32>,
+    /// Whether the character was locked in on the last send.
     pub is_character_locked: bool,
+    /// Previously sent engine type.
     pub engine_type: Option<i32>,
+    /// Whether the engine was locked in on the last send.
     pub is_engine_locked: bool,
 }
 
+/// One-shot flags that gate network message sends.
 #[derive(Debug, Default)]
 pub struct RaceFlags {
+    /// True after the password has been sent to the server.
     pub password_sent: bool,
+    /// True while the character/engine selection is locked (prevents AFK kicks).
     pub lock_engine_and_character: bool,
+    /// True after the warpclock message has been sent this race.
     pub sent_warpclock: bool,
+    /// True after the start race message has been sent.
     pub sent_start_race: bool,
+    /// True after the end race message has been sent.
     pub sent_end_race: bool,
+    /// True when a finish timer message is pending delivery.
     pub packet_already_sent: bool,
 }
 
+/// Connection tracking for the current server.
 #[derive(Debug, Default)]
 pub struct Connection {
+    /// Number of join-room attempts made (stops duplicate sends at 1).
     pub attempt: i32,
+    /// Resolved server address to connect to.
     pub server_addr: Option<SocketAddr>,
+    /// Index into [`SERVERS`] for the selected server.
     pub static_server_id: i32,
+    /// Index of the room to join (0-15).
     pub static_room_id: i32,
 }
 
+/// Race-scoped state, reset when joining a new room.
 #[derive(Debug, Default)]
 pub struct Race {
+    /// Frame counter used for periodic pings and room list refreshes.
     pub count_frame: i32,
+    /// Wall clock timestamp when the AFK timer started.
     pub time_start: f64,
+    /// Wall clock timestamp when the last warpclock message was sent.
     pub warpclock_delay: f64,
+    /// Per-player cooldown timestamps for forcing SQUARE after disconnect.
     pub square_delay: [u64; MAX_NUM_PLAYERS],
     // TODO: change this when we figure out what the timers are representing
     pub timers: [f64; 2],
+    /// Whether extra laps were configured (affects finish timer thresholds).
     pub extra_laps: i32,
+    /// One-shot send flags for this race.
     pub flags: RaceFlags,
 }
 
+/// Previous values of server-sent inputs, used to detect changes.
 #[derive(Debug, Default)]
 pub struct PreviousInput {
+    /// Last known warpclock value.
     pub warpclock: Option<i32>,
+    /// Last known special/gamemode value.
     pub special: Option<i32>,
+    /// Last known finish timer value.
     pub finish_timer: Option<i32>,
     // TODO: change this when we figure out what buttons the indexes of the array are representing
     pub buttons: [i32; PREVIOUS_BUTTONS_SIZE],
 }
 
+/// Lobby-scoped state for the current session.
 #[derive(Debug, Default)]
 pub struct Lobby {
+    /// The local player's display name.
     pub username: String,
+    /// Number of players required to start the race.
     pub required_players: i32,
+    /// Number of players that have disconnected this session.
     pub disconnected_players: i32,
+    /// Number of players currently active (non-empty name buffers).
     pub active_players: i32,
 }
 
+/// Client-side state accumulated across frames.
+///
+/// Created once at startup and mutated by state handlers as the game
+/// progresses. Sub-structs are reset at different granularities:
+/// `lobby` persists for the whole session, `race` is implicitly reset
+/// when joining a new room (see [`handlers::new_client::handle`]),
+/// and `previous_selection` is reset by [`lobby_guest_track_wait`].
 #[derive(Debug)]
 pub struct GameState {
+    /// Connection tracking for the current server.
     pub connection: Connection,
+    /// Race-scoped state, reset when joining a new room.
     pub race: Race,
+    /// Previous values of server-sent inputs for change detection.
     pub previous: PreviousInput,
+    /// Lobby-scoped state for the current session.
     pub lobby: Lobby,
+    /// Previous character and engine choices.
     pub previous_selection: PlayerSelection,
 }
 
@@ -107,6 +160,10 @@ impl GameState {
     }
 }
 
+/// Polls the ENet connection for incoming packets and server events.
+///
+/// Dispatches received data to [`handlers::process_receive_event`].
+/// On `Disconnect`, sets state to -1 (disconnected).
 pub fn process_network_messages(
     ctr: &OnlineCtrSnapshot,
     net: Option<&mut EnetClient>,
@@ -137,6 +194,9 @@ pub fn process_network_messages(
     effects
 }
 
+/// Busy-waits until the PS1 sets `ready_to_send = 1`, then clears it.
+///
+/// This synchronises the PC client with the emulator's frame boundary.
 pub fn frame_stall(ps1_memory: &mut Ps1Memory) {
     while ps1_memory.online_ctr().ready_to_send == 0 {
         std::thread::sleep(Duration::from_micros(1));
@@ -145,6 +205,8 @@ pub fn frame_stall(ps1_memory: &mut Ps1Memory) {
     ps1_memory.online_ctr_mut().ready_to_send = 0;
 }
 
+/// Checks if the player pressed DSELECT (bit 0x2000 in gamepad hold).
+/// If so, disconnects from the server and resets to the disconnected state.
 pub fn disconnect(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effect> {
     if (ctr.gamepad_hold & 0x2000) != 0 {
         state.race.flags.lock_engine_and_character = false;
@@ -162,6 +224,9 @@ pub fn disconnect(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effect>
     }
 }
 
+/// Kicks the player after [`AFK_TIMEOUT`] seconds of inactivity in
+/// character/engine selection. Only active while
+/// `lock_engine_and_character` is true.
 pub fn afk_timer(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effect> {
     if !state.race.flags.lock_engine_and_character {
         state.race.time_start = 0.0;
@@ -195,6 +260,8 @@ pub fn afk_timer(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effect> 
     }
 }
 
+/// Waits for the PS1 binary to boot (`is_booted_ps1 == 1`), then
+/// transitions to server selection.
 pub fn launch_enter_pid(ctr: &OnlineCtrSnapshot) -> Vec<Effect> {
     if ctr.is_booted_ps1 == 0 {
         return vec![];
@@ -210,6 +277,11 @@ pub fn launch_enter_pid(ctr: &OnlineCtrSnapshot) -> Vec<Effect> {
     ]
 }
 
+/// Waits for the player to select a server country in the PS1 menu.
+///
+/// Reads `cutscene_level_id`, `loading_stage`, `server_lock_in1`, and
+/// `server_country` from the snapshot. Once a server is picked, stores
+/// the resolved address in `state.connection` and sets `client_busy = 1`.
 pub fn launch_pick_server(
     ctr: &OnlineCtrSnapshot,
     state: &mut GameState,
@@ -250,11 +322,18 @@ pub fn launch_pick_server(
     }
 }
 
+/// Placeholder for version mismatch or connection errors.
+/// Returns no effects; the client waits for the player to return to the menu.
 pub fn launch_error() -> Vec<Effect> {
     // Version mismatch or other connection error — wait for user to return to menu.
     vec![]
 }
 
+/// Manages the password entry popup for password-protected rooms.
+///
+/// Pings the server every 60 frames to prevent timeout. Once the player
+/// enters a password (`password_entered[7] != 0`), reads the room's
+/// password sequence from the snapshot and sends a [`Password`] message.
 pub fn launch_enter_password(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effect> {
     if state.race.flags.password_sent {
         return vec![];
@@ -284,6 +363,9 @@ pub fn launch_enter_password(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> 
     effects
 }
 
+/// Sends the room type (normal, tournament, or password-protected) to
+/// the server. The host (driver_id == 0) makes this choice; guests do
+/// nothing.
 pub fn lobby_assign_role(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effect> {
     state.connection.attempt = 0;
     state.race.count_frame = 0;
@@ -318,6 +400,9 @@ pub fn lobby_assign_role(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<
     }
 }
 
+/// Sends a [`Character`] message when the player changes their
+/// character or locks it in. Transitions to `LobbyEnginePick` when
+/// the character is locked.
 pub fn lobby_character_pick(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effect> {
     let character_id = ctr.character_id as i32;
     let locked_in = ctr.locked_in_characters[ctr.driver_id as usize] as i32;
@@ -345,6 +430,9 @@ pub fn lobby_character_pick(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> V
     effects
 }
 
+/// Sends an [`Engine`] message when the player changes their engine
+/// or locks it in. Clears `lock_engine_and_character` and transitions
+/// to `LobbyWaitForLoading` when the engine is locked.
 pub fn lobby_engine_pick(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effect> {
     let engine_type = ctr.engine_type[0] as i32;
     let locked_in = ctr.locked_in_engines[ctr.driver_id as usize] as i32;
@@ -374,6 +462,8 @@ pub fn lobby_engine_pick(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<
     effects
 }
 
+/// Sends the active gamemode toggles when the host locks in special
+/// selection. Always forces `Gamemode::Normal` to true.
 pub fn lobby_special_pick(ctr: &OnlineCtrSnapshot, _state: &mut GameState) -> Vec<Effect> {
     if ctr.locked_in_special == 0 {
         return vec![];
@@ -395,6 +485,10 @@ pub fn lobby_special_pick(ctr: &OnlineCtrSnapshot, _state: &mut GameState) -> Ve
     ]
 }
 
+/// Sends the selected track and lap count when the host locks in both.
+/// Translates `lap_id` into an actual lap count using the same lookup
+/// as the C server. Writes the lap count to PS1 memory address
+/// `0x80096b20 + 0x1d33`.
 pub fn lobby_host_track_pick(ctr: &OnlineCtrSnapshot, _state: &mut GameState) -> Vec<Effect> {
     // locked_in_lap gets set after locked_in_level already sets
     if ctr.locked_in_lap == 0 {
@@ -422,6 +516,8 @@ pub fn lobby_host_track_pick(ctr: &OnlineCtrSnapshot, _state: &mut GameState) ->
     ]
 }
 
+/// Resets `previous_selection` so character/engine change detection
+/// works fresh when the guest enters pick mode.
 pub fn lobby_guest_track_wait(state: &mut GameState) -> Vec<Effect> {
     state.previous_selection.character_id = None;
     state.previous_selection.is_character_locked = false;
@@ -430,17 +526,25 @@ pub fn lobby_guest_track_wait(state: &mut GameState) -> Vec<Effect> {
     vec![]
 }
 
+/// No-op. Loading is triggered by the server's `StartLoading` message,
+/// handled in [`handlers::start_loading::handle`].
 pub fn lobby_wait_for_loading() -> Vec<Effect> {
     // if recv message to start loading, change state to StartLoading, this check happens in ProcessNewMessages
     vec![]
 }
 
+/// Resets race send flags and clears the finish race timer when loading
+/// begins.
 pub fn lobby_start_loading(state: &mut GameState) -> Vec<Effect> {
     state.race.flags.sent_start_race = false;
     state.race.flags.sent_end_race = false;
     vec![Effect::SetFinishRaceTimer(0)]
 }
 
+/// Room browser state. Every 60 frames sends a junk room message
+/// (`0xFF`) to trigger a server response. When the player picks a
+/// room (`server_lock_in2 != 0`), sends [`Room`] with the chosen
+/// index exactly once.
 pub fn launch_pick_room(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effect> {
     let mut effects: Vec<Effect> = Vec::new();
 
@@ -481,6 +585,10 @@ pub fn launch_pick_room(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<E
     effects
 }
 
+/// Sends periodic kart state (unsequenced) and weapon pickups (reliable).
+///
+/// Compresses button hold flags: L1/R1 are folded into the low byte,
+/// Circle/L2 are stripped. Kart rotation is split into two 5+8 bit fields.
 fn send_everything(ctr: &OnlineCtrSnapshot) -> Vec<Effect> {
     // position
     let hold_raw = ctr.gamepad_hold;
@@ -531,6 +639,9 @@ fn send_everything(ctr: &OnlineCtrSnapshot) -> Vec<Effect> {
     effects
 }
 
+/// Waits for the pre-race camera fly-in to finish (`game_mode & 0x40`),
+/// then sends [`StartRace`] once. Sends periodic kart data in the
+/// meantime.
 pub fn game_wait_for_race(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effect> {
     let mut effects = send_everything(ctr);
 
@@ -547,6 +658,13 @@ pub fn game_wait_for_race(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec
     effects
 }
 
+/// Active race state. Sends periodic kart data and handles:
+///
+/// * Demo camera mode: writes a cheat flag to PS1 memory.
+/// * Warpclock: sends the initial warpclock value, then enforces a
+///   50-second cooldown before allowing another send.
+/// * Finish timer: sets a 30-second (or 60-second for extra laps)
+///   countdown when enough players have finished.
 pub fn game_start_race(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effect> {
     let mut effects = send_everything(ctr);
 
@@ -635,6 +753,10 @@ pub fn game_start_race(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Ef
     effects
 }
 
+/// Post-race state. Sends [`EndRace`] once with course time and best
+/// lap, writes race stats to PS1 memory, and sets the finish timer
+/// countdown (6 seconds for 1 active player, 3 otherwise). Relays
+/// the countdown value to the server.
 pub fn game_end_race(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effect> {
     let mut effects: Vec<Effect> = Vec::new();
 

@@ -6,6 +6,10 @@ use crate::{
     state::GameState,
 };
 
+/// Handles `ServerMessage::RaceData`. Writes other players' kart
+/// position, rotation, wumpa count, boost reserves, and button state
+/// to the correct PS1 memory slots. Expands compressed L1/R1 button
+/// bits back to their original positions.
 pub fn handle(ctr: &OnlineCtrSnapshot, state: &mut GameState, message: Kart) -> Vec<Effect> {
     if ctr.current_state < ClientState::GameWaitForRace as i32 {
         return vec![];

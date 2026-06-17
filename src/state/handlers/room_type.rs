@@ -5,6 +5,9 @@ use crate::{
     state::GameState,
 };
 
+/// Handles `ServerMessage::RoomType`. If the room is password-protected
+/// (type == 2) and the player hasn't locked in yet, transitions to
+/// `LaunchEnterPassword`.
 pub fn handle(ctr: &OnlineCtrSnapshot, state: &mut GameState, message: RoomType) -> Vec<Effect> {
     let mut effects = vec![
         Effect::SetRoomType(message.room_type),

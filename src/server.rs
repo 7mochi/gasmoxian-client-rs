@@ -1,3 +1,9 @@
+//! Hardcoded server endpoints and DNS resolution.
+//!
+//! [`SERVERS`] contains the five known Gasmoxian community servers.
+//! Each entry has a display name and an endpoint string resolved
+//! at runtime via [`ServerInfo::resolve`].
+
 use std::net::{SocketAddr, ToSocketAddrs};
 
 use crate::console;

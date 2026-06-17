@@ -3,6 +3,8 @@ use crate::{
     state::GameState,
 };
 
+/// Handles `ServerMessage::FinishTimer`. Updates the finish countdown
+/// timer in PS1 memory, ignoring duplicate values.
 pub fn handle(
     _ctr: &OnlineCtrSnapshot,
     state: &mut GameState,

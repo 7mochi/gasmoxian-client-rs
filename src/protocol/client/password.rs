@@ -23,6 +23,8 @@ pub struct Password {
 }
 
 impl Password {
+    /// Creates a password entry message with the 8-byte sequence
+    /// read from shared memory.
     pub fn new(sequence: [u8; 8]) -> Self {
         Self {
             _msg_type: ClientMessage::Password as u8,

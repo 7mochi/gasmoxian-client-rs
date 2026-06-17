@@ -9,6 +9,9 @@ use crate::{
     state::GameState,
 };
 
+/// Handles `ServerMessage::NewClient`. Resets all race-scoped state,
+/// assigns the client's driver ID, clears shared memory fields, and
+/// sends the player's name to the server.
 pub fn handle(
     ctr: &OnlineCtrSnapshot,
     state: &mut GameState,

@@ -41,6 +41,10 @@ pub struct Weapon {
 }
 
 impl Weapon {
+    /// Creates a weapon pickup/use message.
+    ///
+    /// `juiced` indicates a powered-up weapon, `flags` holds behaviour
+    /// modifiers, `weapon` is the weapon item ID.
     pub fn new(juiced: bool, flags: u8, weapon: u8) -> Self {
         Self {
             _msg_type: ClientMessage::Weapon as u8,

@@ -1,9 +1,11 @@
-/// Snapshot of PS1 shared memory, captured once per frame.
-///
-/// All state functions receive this snapshot instead of `&Ps1Memory`.
-/// This ensures deterministic, I/O-free logic — the snapshot is a frozen
-/// copy of everything the game wrote this frame, safe from concurrent
-/// mutation by DuckStation.
+//! Frozen copy of PS1 shared memory and auxiliary reads.
+//!
+//! [`OnlineCtrSnapshot::capture`] reads every field from the mmap'd
+//! [`OnlineCTR`] block plus several absolute PS1 addresses (gamepad,
+//! kart position, cheats, loading stage). State functions receive
+//! this snapshot instead of `&Ps1Memory` so they are deterministic
+//! and I/O-free.
+
 use crate::protocol::{MAX_NAME_LENGTH, MAX_NUM_PLAYERS, OnlineCTR, ShootSlot};
 use crate::ps1_memory::{
     CHARACTER_ID, CHEATS, GAMEMODE, GAMEPAD_BASE, LOADING_STAGE, PSX_POINTER, Ps1Memory,

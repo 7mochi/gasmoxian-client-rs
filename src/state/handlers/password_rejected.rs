@@ -1,5 +1,7 @@
 use crate::{effect::Effect, protocol::ClientState, state::GameState};
 
+/// Handles `ServerMessage::PasswordRejected`. Disconnects, clears
+/// the entered password, and returns the player to the room list.
 pub fn handle(state: &mut GameState) -> Vec<Effect> {
     state.race.flags.lock_engine_and_character = false;
     state.race.flags.password_sent = false;

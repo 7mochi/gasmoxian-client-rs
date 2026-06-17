@@ -1,3 +1,10 @@
+//! Linux shared-memory access to DuckStation PS1 RAM.
+//!
+//! [`Ps1Memory::connect`] finds the DuckStation process by scanning
+//! `/dev/shm/duckstation_<pid>` and maps 8 MiB via `shm_open` +
+//! `mmap`. The [`OnlineCTR`] protocol struct lives at offset
+//! `0x8000C000 & 0xFFFFFF` inside that mapping.
+
 use std::ffi::CString;
 use std::fmt;
 use std::ptr;

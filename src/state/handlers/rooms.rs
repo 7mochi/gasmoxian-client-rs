@@ -5,6 +5,9 @@ use crate::{
     state::GameState,
 };
 
+/// Handles `ServerMessage::Rooms`. Updates the room list, checks
+/// server and PS1 version compatibility, and transitions to
+/// `LaunchError` on mismatch.
 pub fn handle(ctr: &OnlineCtrSnapshot, _state: &mut GameState, message: Rooms) -> Vec<Effect> {
     let mut effects = vec![
         Effect::LogDebug(format!(

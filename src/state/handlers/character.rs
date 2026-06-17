@@ -2,6 +2,8 @@ use crate::{
     effect::Effect, protocol::server::Character, ps1_snapshot::OnlineCtrSnapshot, state::GameState,
 };
 
+/// Handles `ServerMessage::Character`. Writes other players' character
+/// choices to PS1 character memory and updates the locked-in state.
 pub fn handle(ctr: &OnlineCtrSnapshot, _state: &mut GameState, message: Character) -> Vec<Effect> {
     let driver_id = ctr.driver_id;
     if message.client_id != driver_id {

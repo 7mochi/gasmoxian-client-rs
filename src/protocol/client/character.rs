@@ -33,6 +33,11 @@ pub struct Character {
 }
 
 impl Character {
+    /// Creates a character selection message.
+    ///
+    /// `character_id` is the selected character (0=Crash, 1=Cortex,
+    /// 2=Tiny, etc.). `locked_in` signals the server to finalise the
+    /// choice and move to engine selection.
     pub fn new(character_id: u8, locked_in: bool) -> Self {
         Self {
             _msg_type: ClientMessage::Character as u8,

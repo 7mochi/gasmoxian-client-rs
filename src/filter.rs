@@ -1,3 +1,9 @@
+//! Profanity filter for player usernames.
+//!
+//! [`contains_prohibited_name`] performs a case-insensitive substring
+//! search over the prohibited word list. If a match is found the
+//! client falls back to [`DEFAULT_USERNAME`].
+
 const PROHIBITED_NAMES: &[&str] = &[
     "nigga",
     "nigger",

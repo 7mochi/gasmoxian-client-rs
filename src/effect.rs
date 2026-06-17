@@ -1,7 +1,9 @@
-/// Pure output commands returned by state functions instead of performing I/O.
-///
-/// The I/O layer (`io.rs`) interprets these effects and executes them
-/// against shared memory, the enet network, and the console.
+//! Pure commands returned by state functions instead of performing I/O.
+//! Every state and packet handler returns `Vec<Effect>`. The caller
+//! ([`io::exec_effects`]) drains the vector and applies each variant
+//! to the real system (shared memory, enet socket, terminal). This
+//! keeps all game logic deterministic and I/O-free.
+
 use crate::protocol::{ClientState, MAX_NAME_LENGTH, RaceStats, ShootSlot};
 
 #[derive(Debug, PartialEq, Clone)]

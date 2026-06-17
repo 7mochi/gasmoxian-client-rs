@@ -6,6 +6,9 @@ use crate::{
     state::GameState,
 };
 
+/// Handles `ServerMessage::Special`. Copies all 18 gamemode toggles
+/// to PS1 memory, applies cheat bits for Icy Tracks and Retro Fueled,
+/// and transitions to `LobbyCharacterPick`.
 pub fn handle(ctr: &OnlineCtrSnapshot, _state: &mut GameState, message: Special) -> Vec<Effect> {
     // copy all gamemodes toggles
     let mut effects: Vec<Effect> = (0..18)

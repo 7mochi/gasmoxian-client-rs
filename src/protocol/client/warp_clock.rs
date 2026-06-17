@@ -29,6 +29,8 @@ pub struct WarpClock {
 }
 
 impl WarpClock {
+    /// Creates a warp clock state notification.
+    /// `warp_clock`: 0=inactive, 1=active (warp orb/clock event).
     pub fn new(warp_clock: u8) -> Self {
         Self {
             _msg_type: ClientMessage::Warpclock as u8,

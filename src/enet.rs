@@ -1,3 +1,9 @@
+//! Thin enet wrapper using `rusty_enet`.
+//!
+//! Provides a blocking handshake (`connect_with_handshake`) with a
+//! 3-second timeout, reliable and unsequenced send methods, and
+//! a polling interface for receiving events.
+
 use std::net::{SocketAddr, UdpSocket};
 use std::time::{Duration, Instant};
 

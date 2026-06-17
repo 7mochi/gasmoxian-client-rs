@@ -37,6 +37,9 @@ pub struct EndRace {
 }
 
 impl EndRace {
+    /// Creates a race result message.
+    ///
+    /// `course_time` and `lap_time` are in PS1 ticks (milliseconds).
     pub fn new(course_time: i32, lap_time: i32) -> Self {
         Self {
             _msg_type: ClientMessage::EndRace as u8,

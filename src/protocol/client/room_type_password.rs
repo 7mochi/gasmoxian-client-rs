@@ -27,6 +27,11 @@ pub struct RoomTypePassword {
 }
 
 impl RoomTypePassword {
+    /// Creates a password-protected room type message.
+    ///
+    /// `room_type` is always 2 for password mode. `r_type_locked`
+    /// indicates whether the type is finalised. `sequence` is the
+    /// host-set password.
     pub fn new(room_type: u8, r_type_locked: u8, sequence: [u8; 8]) -> Self {
         Self {
             _msg_type: ClientMessage::RoomType as u8,

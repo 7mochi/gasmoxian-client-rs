@@ -6,6 +6,10 @@ use crate::{
     state::GameState,
 };
 
+/// Handles `ServerMessage::Name`. Updates the name buffer for other
+/// players. If the name starts with a null byte (player left) or the
+/// current state is pre-race, forces SQUARE on that player's gamepad
+/// to remove them from the lobby.
 pub fn handle(ctr: &OnlineCtrSnapshot, _state: &mut GameState, message: Name) -> Vec<Effect> {
     let driver_id = ctr.driver_id;
     if message.client_id != driver_id {

@@ -23,6 +23,8 @@ pub struct Special {
 }
 
 impl Special {
+    /// Creates a gamemode toggle message. `gamemodes[0]` (Normal)
+    /// should always be true.
     pub fn new(gamemodes: [bool; 18]) -> Self {
         Self {
             _msg_type: ClientMessage::Special as u8,

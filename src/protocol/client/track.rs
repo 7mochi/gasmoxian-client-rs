@@ -36,6 +36,10 @@ pub struct Track {
 }
 
 impl Track {
+    /// Creates a track selection message.
+    ///
+    /// `track_id` is the track index. `lap_id` encodes the lap count:
+    /// 0=1, 1=3, 2=5, 3=7, 4+=special lap values from a lookup table.
     pub fn new(track_id: u8, lap_id: u8) -> Self {
         Self {
             _msg_type: ClientMessage::Track as u8,

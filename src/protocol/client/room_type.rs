@@ -25,6 +25,10 @@ pub struct RoomType {
 }
 
 impl RoomType {
+    /// Creates a room type message.
+    ///
+    /// `room_type`: 0=normal (8 players), 1=tournament (4 players).
+    /// `r_type_locked`: 1 to lock the type, 0 to allow changes.
     pub fn new(room_type: u8, r_type_locked: u8) -> Self {
         Self {
             _msg_type: ClientMessage::RoomType as u8,

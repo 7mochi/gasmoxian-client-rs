@@ -1,3 +1,9 @@
+//! Terminal logging and user input.
+//!
+//! Four severity levels: `debug` (only shown with `LOG=debug`),
+//! `info`, `ok`, and `err`. Also provides banner printing and
+//! an interactive username prompt.
+
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use console::style;

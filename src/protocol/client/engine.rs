@@ -37,6 +37,10 @@ pub struct Engine {
 }
 
 impl Engine {
+    /// Creates an engine selection message.
+    ///
+    /// `engine_type` must be 0-3 (Balanced, Accel, Speed, Turn).
+    /// `locked_in` signals the server to finalise and start loading.
     pub fn new(engine_type: u8, locked_in: bool) -> Self {
         Self {
             _msg_type: ClientMessage::Engine as u8,

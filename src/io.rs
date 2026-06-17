@@ -1,3 +1,10 @@
+//! Sole I/O boundary of the sans-IO architecture.
+//!
+//! [`exec_effects`] drains a `Vec<Effect>` and applies each variant
+//! to either PS1 shared memory, the enet connection, or the terminal.
+//! There is no other place in the program that performs observable
+//! side effects on external systems.
+
 use crate::{console, effect::Effect, enet::EnetClient, ps1_memory::Ps1Memory};
 
 /// Executes all accumulated effects, draining the vector.

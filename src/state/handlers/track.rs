@@ -5,6 +5,9 @@ use crate::{
     state::GameState,
 };
 
+/// Handles `ServerMessage::Track`. Converts `lap_id` to the actual
+/// lap count using the same lookup as the C server, writes it to PS1
+/// memory, and transitions to `LobbySpecialPick`.
 pub fn handle(_ctr: &OnlineCtrSnapshot, state: &mut GameState, message: Track) -> Vec<Effect> {
     let num_laps = if message.lap_id >= 4 && message.lap_id <= 15 {
         let lap_values = [10, 15, 20, 25, 30, 35, 40, 50, 69, 80, 90, 127];

@@ -48,6 +48,12 @@ pub struct Kart {
 }
 
 impl Kart {
+    /// Creates a periodic kart state update.
+    ///
+    /// `wumpa` is clamped to 0-7. `reserves` sets the boost flag.
+    /// `kart_rotation1` and `kart_rotation2` are derived from
+    /// `kart_angle`. Button hold uses the compressed format
+    /// (Circle/L2 stripped, L1/R1 folded into low byte).
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         wumpa: u8,

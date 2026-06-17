@@ -6,6 +6,10 @@ use crate::{
     state::GameState,
 };
 
+/// Handles `ServerMessage::EndRace`. Writes race results (slot, time,
+/// best lap) to PS1 memory for other players. After a 3-second delay,
+/// forces SQUARE on the finished player's gamepad to return them to
+/// the lobby.
 pub fn handle(ctr: &OnlineCtrSnapshot, state: &mut GameState, message: EndRace) -> Vec<Effect> {
     let driver_id = ctr.driver_id;
     if message.client_id == driver_id {

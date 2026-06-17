@@ -23,6 +23,8 @@ pub struct Room {
 }
 
 impl Room {
+    /// Creates a join room message for the given room index (0-15).
+    /// Passing `0xFF` triggers a room list refresh.
     pub fn new(room: u8) -> Self {
         Self {
             _msg_type: ClientMessage::JoinRoom as u8,

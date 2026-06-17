@@ -26,6 +26,7 @@ impl Default for StartRace {
 }
 
 impl StartRace {
+    /// Creates an empty signal indicating the client is ready to race.
     pub fn new() -> Self {
         Self {
             _msg_type: ClientMessage::StartRace as u8,

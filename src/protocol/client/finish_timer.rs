@@ -33,6 +33,8 @@ pub struct FinishTimer {
 }
 
 impl FinishTimer {
+    /// Creates a finish countdown sync message.
+    /// `finish_timer` is the remaining countdown value (0-63).
     pub fn new(finish_timer: u8) -> Self {
         Self {
             _msg_type: ClientMessage::FinishTimer as u8,

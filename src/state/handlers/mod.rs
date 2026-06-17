@@ -1,3 +1,10 @@
+//! Deserialises incoming server packets and dispatches to typed handlers.
+//!
+//! Each `ServerMessage` variant maps to a handler function in a
+//! sub-module. The [`process_receive_event`] entry point extracts the
+//! message type from the low nibble of the first byte, deserialises the
+//! payload using `deku`, and calls the appropriate handler.
+
 use deku::DekuContainerRead;
 use num_traits::FromPrimitive;
 
@@ -31,6 +38,8 @@ pub mod track;
 pub mod warp_clock;
 pub mod weapon;
 
+/// Reads the first byte's low nibble as `ServerMessage`, deserialises
+/// the payload, and dispatches to the matching handler.
 pub fn process_receive_event(
     ctr: &OnlineCtrSnapshot,
     state: &mut GameState,

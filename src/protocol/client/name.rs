@@ -23,6 +23,7 @@ pub struct Name {
 }
 
 impl Name {
+    /// Creates a name broadcast message with a 12-byte username buffer.
     pub fn new(username: [u8; 12]) -> Self {
         Self {
             _msg_type: ClientMessage::Name as u8,
