@@ -70,12 +70,9 @@ pub fn handle(
     let mut username = [0u8; 12];
     username[..name_len].copy_from_slice(&username_buffer[..name_len]);
 
-    let client_message = Name {
-        msg_type: ClientMessage::Name,
-        username,
-    }
-    .to_bytes()
-    .expect("Failed to serialize name message");
+    let client_message = Name::new(username)
+        .to_bytes()
+        .expect("Failed to serialize name message");
 
     net.send_reliable(&client_message)
         .expect("Failed to send name message");

@@ -1,3 +1,20 @@
+/// Sent when the player picks up or uses a weapon item.
+///
+/// +---+---+---+---+-----+-------+---+---+---+---+----+----+----+----+----+----+
+/// |                  0                  |                  1                  |
+/// +---+---+---+---+-----+-------+---+---+---+---+----+----+----+----+----+----+
+/// | 0 | 1 | 2 | 3 |  4  |   5   | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+/// +---+---+---+---+-----+-------+---+---+---+---+----+----+----+----+----+----+
+/// |   _msg_type   | jcd | _pad0 | flags |     weapon      |       _end        |
+/// +---+---+---+---+-----+-------+---+---+---+---+----+----+----+----+----+----+
+///
+///  Field       Bits   Offset     Description 
+///  _msg_type   4      byte 0:0   ClientMessage::Weapon
+///  jcd         1      byte 0:4   1=juiced (powered up)
+///  _pad0       1      byte 0:5   Unused
+///  flags       2      byte 0:6   Aim flags
+///  weapon      4      byte 1:0   Weapon ID (0=TurboBoost, 1=BowlingBoom, 2=TrackingMissile, etc.)
+///  _end        4      byte 1:4   Unused
 use deku::prelude::*;
 
 use crate::protocol::ClientMessage;

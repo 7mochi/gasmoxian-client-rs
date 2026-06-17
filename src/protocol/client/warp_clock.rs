@@ -1,3 +1,17 @@
+/// Sent to broadcast the player's warp clock state.
+///
+/// +---+---+---+---+---+---+------+-----+
+/// |                 0                  |
+/// +---+---+---+---+---+---+------+-----+
+/// | 0 | 1 | 2 | 3 | 4 | 5 |  6   |  7  |
+/// +---+---+---+---+---+---+------+-----+
+/// |   _msg_type   | _pad  | warp_clock |
+/// +---+---+---+---+---+---+------+-----+
+///
+///  Field        Bits   Offset     Description 
+///  _msg_type    4      byte 0:0   ClientMessage::Warpclock
+///  _pad         2      byte 0:4   Unused
+///  warp_clock   2      byte 0:6   0=inactive, 1=active (warp orb/clock event)
 use deku::prelude::*;
 
 use crate::protocol::ClientMessage;

@@ -13,8 +13,8 @@
 ///  _pad0         4      byte 0:4   Unused
 ///  client_id     4      byte 1:0   Driver slot 0-7
 ///  _pad1         20     byte 1:4   Unused
-///  course_time   32     byte 4:0   Race time in PS1 ticks
-///  lap_time      32     byte 8:0   Best lap in PS1 ticks
+///  course_time   32     byte 4:0   Race time in PS1 ticks (i32 LE)
+///  lap_time      32     byte 8:0   Best lap in PS1 ticks (i32 LE)
 use deku::prelude::*;
 
 #[derive(Debug, Clone, DekuRead, DekuWrite)]

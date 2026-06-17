@@ -298,10 +298,7 @@ pub fn launch_enter_password(
         sequence[i] = ps1_memory.online_ctr().room_password_sequence[i];
     }
 
-    let client_message = Password {
-        msg_type: ClientMessage::Password,
-        sequence,
-    }
+    let client_message = Password::new(sequence)
     .to_bytes()
     .expect("Failed to serialize password message");
 
@@ -342,25 +339,16 @@ pub fn lobby_assign_role(
             sequence[i] = ps1_memory.online_ctr().room_password_sequence[i];
         }
 
-        let client_message = RoomTypePassword {
-            msg_type: ClientMessage::RoomType,
-            room_type,
-            r_type_locked: room_type_locked,
-            sequence,
-        }
-        .to_bytes()
-        .expect("Failed to serialize room type password message");
+        let client_message = RoomTypePassword::new(room_type, room_type_locked, sequence)
+            .to_bytes()
+            .expect("Failed to serialize room type password message");
 
         net.send_reliable(&client_message)
             .expect("Failed to send room type password message");
     } else {
-        let client_message = RoomType {
-            msg_type: ClientMessage::RoomType,
-            room_type,
-            r_type_locked: room_type_locked,
-        }
-        .to_bytes()
-        .expect("Failed to serialize room type message");
+        let client_message = RoomType::new(room_type, room_type_locked)
+            .to_bytes()
+            .expect("Failed to serialize room type message");
 
         net.send_reliable(&client_message)
             .expect("Failed to send room type message");
@@ -461,12 +449,9 @@ pub fn lobby_special_pick(
     // always ensure GameMode::Normal is enabled
     gamemodes[Gamemode::Normal as usize] = true;
 
-    let client_message = Special {
-        msg_type: ClientMessage::Special,
-        gamemodes,
-    }
-    .to_bytes()
-    .expect("Failed to serialize special message");
+    let client_message = Special::new(gamemodes)
+        .to_bytes()
+        .expect("Failed to serialize special message");
 
     net.send_reliable(&client_message)
         .expect("Failed to send special message");
@@ -550,12 +535,9 @@ pub fn launch_pick_room(
         state.race.count_frame = 0;
 
         // send junk data, this triggers server response
-        let client_message = Room {
-            msg_type: ClientMessage::JoinRoom,
-            room: 0xFF,
-        }
-        .to_bytes()
-        .expect("Failed to serialize join room message");
+        let client_message = Room::new(0xFF)
+            .to_bytes()
+            .expect("Failed to serialize join room message");
 
         net.send_reliable(&client_message)
             .expect("Failed to send join room message");
@@ -576,12 +558,9 @@ pub fn launch_pick_room(
     let room = ps1_memory.online_ctr().server_room;
     ps1_memory.online_ctr_mut().auto_retry_join_room_index = -1;
 
-    let client_message = Room {
-        msg_type: ClientMessage::JoinRoom,
-        room,
-    }
-    .to_bytes()
-    .expect("Failed to serialize join room message");
+    let client_message = Room::new(room)
+        .to_bytes()
+        .expect("Failed to serialize join room message");
 
     net.send_reliable(&client_message)
         .expect("Failed to send join room message");
@@ -689,11 +668,9 @@ pub fn game_wait_for_race(
 
     // only send once and after camera fly-in is done
     if !state.race.flags.sent_start_race && (game_mode & 0x40) == 0 {
-        let client_message = StartRace {
-            msg_type: ClientMessage::StartRace,
-        }
-        .to_bytes()
-        .expect("Failed to serialize start race message");
+        let client_message = StartRace::new()
+            .to_bytes()
+            .expect("Failed to serialize start race message");
 
         net.send_reliable(&client_message)
             .expect("Failed to send start race message");
