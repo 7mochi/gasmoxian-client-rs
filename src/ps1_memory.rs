@@ -8,12 +8,14 @@ use crate::protocol::OnlineCTR;
 
 pub const LOBBY_LEVEL_ID: i8 = 38;
 
-pub const SHARED_MEMORY_SIZE: usize = 0x800000;
 pub const ONLINE_CTR_OFFSET: usize = 0x8000C000 & 0xFFFFFF;
+pub const SHARED_MEMORY_SIZE: usize = 0x800000;
 
+pub const CHEATS: u32 = 0x80096b28;
 pub const GAMEPAD_BASE: u32 = 0x80096804;
 pub const GAMEMODE: u32 = 0x80096b20;
 pub const LOADING_STAGE: u32 = 0x8008d0f8;
+pub const PSX_POINTER: u32 = 0x8009900c;
 
 #[derive(Debug)]
 pub enum Ps1MemoryError {

@@ -3,12 +3,13 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use deku::DekuContainerWrite;
 use rusty_enet::Event::{self};
 
 use crate::{
     console,
     enet::EnetClient,
-    protocol::{ClientState, MAX_NUM_PLAYERS},
+    protocol::{ClientMessage, ClientState, MAX_NUM_PLAYERS, client::Room},
     ps1_memory::{GAMEMODE, GAMEPAD_BASE, LOADING_STAGE, LOBBY_LEVEL_ID, Ps1Memory},
     server::SERVERS,
 };
@@ -190,25 +191,25 @@ pub fn afk_timer(ps1_memory: &mut Ps1Memory, net: Option<&mut EnetClient>, state
     }
 }
 
-pub fn launch_enter_pid(ps1: &mut Ps1Memory, _net: Option<&mut EnetClient>, _state: &mut GameState) {
-    if ps1.online_ctr().is_booted_ps1 == 0 {
+pub fn launch_enter_pid(ps1_memory: &mut Ps1Memory) {
+    if ps1_memory.online_ctr().is_booted_ps1 == 0 {
         return;
     }
     console::debug(format!(
         "PS1 booted (psx_version: {}, pc_version: {})",
-        ps1.online_ctr().psx_version,
-        ps1.online_ctr().pc_version
+        ps1_memory.online_ctr().psx_version,
+        ps1_memory.online_ctr().pc_version
     ));
 
     console::ok("Connected to DuckStation");
     console::info("Waiting to connect to a server...");
 
-    ps1.online_ctr_mut().current_state = ClientState::LaunchPickServer as i32;
+    ps1_memory.online_ctr_mut().current_state = ClientState::LaunchPickServer as i32;
 }
 
-pub fn launch_pick_server(ps1: &mut Ps1Memory, _net: Option<&mut EnetClient>, state: &mut GameState) {
+pub fn launch_pick_server(ps1_memory: &mut Ps1Memory, state: &mut GameState) {
     // quit if disconnected but not loaded, back into the selection screen yet
-    let level_id = ps1
+    let level_id = ps1_memory
         .read_u32(GAMEMODE.wrapping_add(0x1a10))
         .expect("GAMEMODE is within shared memory bounds") as i8;
 
@@ -218,7 +219,7 @@ pub fn launch_pick_server(ps1: &mut Ps1Memory, _net: Option<&mut EnetClient>, st
     }
 
     // quit if in loading screen (force-reconnect)
-    let loading = ps1
+    let loading = ps1_memory
         .read_u32(LOADING_STAGE)
         .expect("LOADING_STAGE is within shared memory bounds");
     if loading != 0xFFFFFFFF {
@@ -226,7 +227,7 @@ pub fn launch_pick_server(ps1: &mut Ps1Memory, _net: Option<&mut EnetClient>, st
     }
 
     let server_country = {
-        let online_ctr = ps1.online_ctr();
+        let online_ctr = ps1_memory.online_ctr();
         // return now if the server selection hasn't been selected yet
         if online_ctr.server_lock_in1 == 0 {
             return;
@@ -240,7 +241,7 @@ pub fn launch_pick_server(ps1: &mut Ps1Memory, _net: Option<&mut EnetClient>, st
     // TODO: private server
 
     // now selecting country
-    ps1.online_ctr_mut().client_busy = 1;
+    ps1_memory.online_ctr_mut().client_busy = 1;
     let server = &SERVERS[server_country];
 
     if let Some(addr) = server.resolve() {
@@ -252,5 +253,55 @@ pub fn launch_pick_server(ps1: &mut Ps1Memory, _net: Option<&mut EnetClient>, st
 
     console::info(format!("Ready to connect to {}", server.endpoint));
 
-    ps1.online_ctr_mut().current_state = ClientState::LaunchPickRoom as i32;
+    ps1_memory.online_ctr_mut().current_state = ClientState::LaunchPickRoom as i32;
+}
+
+pub fn launch_pick_room(ps1_memory: &mut Ps1Memory, net: Option<&mut EnetClient>, state: &mut GameState) {
+    let net = match net {
+        Some(n) => n,
+        None => return,
+    };
+    
+    state.race.count_frame += 1;
+
+    // room not updating bug still happens if the number is not 60, i didnt tried 30 anyways
+    if state.race.count_frame == 60 {
+        state.race.count_frame = 0;
+
+        // send junk data, this triggers server response
+        let client_message = Room {
+            msg_type: ClientMessage::JoinRoom,
+            room: 0xFF,
+        }
+        .to_bytes()
+        .expect("Failed to serialize join room message");
+
+        net.send_reliable(&client_message)
+            .expect("Failed to send join room message");
+    }
+
+    // wait for room to be chosen
+    if ps1_memory.online_ctr().server_lock_in2 == 0 {
+        state.connection.attempt = 0;
+        return;
+    }
+
+    // dont send ClientMsg::JoinRoom twice
+    if state.connection.attempt == 1 {
+        return;
+    }
+    state.connection.attempt = 1;
+
+    let room = ps1_memory.online_ctr().server_room;
+    ps1_memory.online_ctr_mut().auto_retry_join_room_index = -1;
+
+    let client_message = Room {
+        msg_type: ClientMessage::JoinRoom,
+        room,
+    }
+    .to_bytes()
+    .expect("Failed to serialize join room message");
+
+    net.send_reliable(&client_message)
+        .expect("Failed to send join room message");
 }

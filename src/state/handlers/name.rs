@@ -4,7 +4,7 @@ use crate::{
 };
 
 pub fn handle(ps1_memory: &mut Ps1Memory, message: Name) -> anyhow::Result<()> {
-    let driver_id = ps1_memory.online_ctr().driver_id as u8;
+    let driver_id = ps1_memory.online_ctr().driver_id;
     if message.client_id != driver_id {
         let slot = if message.client_id < driver_id {
             message.client_id + 1

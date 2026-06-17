@@ -62,15 +62,13 @@ pub fn handle(
 
     // send name to the server
     let username_buffer = state.lobby.username.as_bytes();
-    for i in 0..MAX_NAME_LENGTH {
-        ps1_memory.online_ctr_mut().name_buffer[0][i] = username_buffer[i];
-    }
+    let name_len = username_buffer.len().min(MAX_NAME_LENGTH);
+    ps1_memory.online_ctr_mut().name_buffer[0][..name_len]
+        .copy_from_slice(&username_buffer[..name_len]);
     ps1_memory.online_ctr_mut().name_buffer[0][MAX_NAME_LENGTH] = 0;
 
     let mut username = [0u8; 12];
-    for i in 0..MAX_NAME_LENGTH {
-        username[i] = username_buffer[i];
-    }
+    username[..name_len].copy_from_slice(&username_buffer[..name_len]);
 
     let client_message = Name {
         msg_type: ClientMessage::Name,

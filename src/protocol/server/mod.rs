@@ -1,9 +1,27 @@
+mod character;
 mod client_status;
+mod end_race;
+mod engine;
+mod finish_timer;
+mod kart;
 mod name;
 mod room_type;
 mod rooms;
+mod special;
+mod track;
+mod warp_clock;
+mod weapon;
 
+pub use character::Character;
 pub use client_status::ClientStatus;
+pub use end_race::EndRace;
+pub use engine::Engine;
+pub use finish_timer::FinishTimer;
+pub use kart::Kart;
 pub use name::Name;
 pub use room_type::RoomType;
 pub use rooms::Rooms;
+pub use special::Special;
+pub use track::Track;
+pub use warp_clock::WarpClock;
+pub use weapon::Weapon;

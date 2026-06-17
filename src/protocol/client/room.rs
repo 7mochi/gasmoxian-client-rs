@@ -3,9 +3,9 @@ use deku::{DekuRead, DekuWrite};
 use crate::protocol::ClientMessage;
 
 #[derive(Debug, Clone, Copy, DekuRead, DekuWrite)]
-pub struct Name {
-    #[deku(update = "ClientMessage::Name")]
+pub struct Room {
+    #[deku(update = "ClientMessage::JoinRoom")]
     pub msg_type: ClientMessage,
 
-    pub username: [u8; 12],
+    pub room: u8,
 }

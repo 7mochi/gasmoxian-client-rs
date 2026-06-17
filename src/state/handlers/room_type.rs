@@ -17,9 +17,7 @@ pub fn handle(
         && ps1_memory.online_ctr().room_type_locked == 0
         && ps1_memory.online_ctr().current_state == ClientState::LaunchPickRoom as i32
     {
-        console::debug(format!(
-            "Room type is password protected, waiting for password input.",
-        ));
+        console::debug("Room type is password protected, waiting for password input.".to_string());
 
         state.race.flags.password_sent = false;
 

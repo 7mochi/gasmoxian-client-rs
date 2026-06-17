@@ -77,6 +77,29 @@ pub struct OnlineCTR {
     pub password_entered: [u8; 8],
 }
 
+#[repr(u8)]
+#[derive(Clone, Copy)]
+pub enum Gamemode {
+    Normal,
+    Mirror,
+    IcyTracks,
+    Itemless,
+    MoonMode,
+    RetroFueled,
+    FirstPerson,
+    BossRace,
+    DemoCamera,
+    NVerted,
+    Shortcutless,
+    Night,
+    Darkness,
+    ItemChaos,
+    Survival,
+    SurvivalTimer,
+    VanillaItems,
+    WallDrive,
+}
+
 #[repr(i32)]
 #[derive(Clone, Copy, PartialEq, Eq, FromPrimitive)]
 pub enum ClientState {

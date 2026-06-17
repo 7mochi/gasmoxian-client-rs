@@ -100,6 +100,7 @@ fn main() -> anyhow::Result<()> {
         if let Some(current_state) = ClientState::from_i32(state_idx) {
             match current_state {
                 ClientState::LaunchPickRoom => {
+                    // first iteration: establish the enet connection
                     if let Some(addr) = gamestate.connection.server_addr.take() {
                         console::debug(format!("Attempting connection to {}", addr));
                         match EnetClient::new(addr) {
@@ -121,16 +122,16 @@ fn main() -> anyhow::Result<()> {
                             }
                         }
                     }
-                }
 
+                    // subsequent iterations: connected, poll rooms and join
+                    state::launch_pick_room(&mut ps1_memory, net.as_mut(), &mut gamestate);
+                }
                 ClientState::LaunchEnterPid => {
-                    state::launch_enter_pid(&mut ps1_memory, net.as_mut(), &mut gamestate);
+                    state::launch_enter_pid(&mut ps1_memory);
                 }
-
                 ClientState::LaunchPickServer => {
-                    state::launch_pick_server(&mut ps1_memory, net.as_mut(), &mut gamestate);
+                    state::launch_pick_server(&mut ps1_memory, &mut gamestate);
                 }
-
                 _ => {}
             }
         }
