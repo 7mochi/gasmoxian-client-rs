@@ -1,3 +1,6 @@
+/// Sent when a player finishes the race, containing their final times.
+///
+/// TODO: Table
 use deku::prelude::*;
 
 #[derive(Debug, Clone, DekuRead, DekuWrite)]

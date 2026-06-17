@@ -1,3 +1,6 @@
+/// Sent during race to sync the finish countdown timer.
+///
+/// TODO: Table
 use deku::prelude::*;
 
 #[derive(Debug, Clone, DekuRead, DekuWrite)]

@@ -1,3 +1,22 @@
+/// Server → Client: Weapon pickup notification (2 bytes)
+///
+/// Sent when a player picks up or uses a weapon item.
+///
+/// +---+---+---+---+---+---+---+-----+---+---+----+----+----+----+----+----+
+/// |                0                |                  1                  |
+/// +---+---+---+---+---+---+---+-----+---+---+----+----+----+----+----+----+
+/// | 0 | 1 | 2 | 3 | 4 | 5 | 6 |  7  | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+/// +---+---+---+---+---+---+---+-----+---+---+----+----+----+----+----+----+
+/// |   _msg_type   | client_id | jcd |     weapon      |  flags  |  _pad   |
+/// +---+---+---+---+---+---+---+-----+---+---+----+----+----+----+----+----+
+///
+///  Field       Bits   Offset     Description 
+///  _msg_type   4      byte 0:0   ServerMessage::Weapon
+///  client_id   3      byte 0:4   Driver slot (0-7)
+///  jcd         1      byte 0:7   1 = juiced (powered-up) weapon
+///  weapon      4      byte 1:0   Weapon ID (TODO: confirm values 0=Bomb, 1=…..)
+///  flags       2      byte 1:4   Weapon flags (TODO: confirm values aim direction etc.)
+///  _pad        2      byte 1:6   Unused
 use deku::{DekuRead, DekuWrite};
 
 #[derive(Debug, Clone, DekuRead, DekuWrite)]

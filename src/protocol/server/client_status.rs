@@ -1,3 +1,18 @@
+/// Sent when a player joins or leaves the server lobby.
+///
+/// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+
+/// |               0               |                  1                  |
+/// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+
+/// | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+/// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+
+/// |   _msg_type   |   client_id   |  client_count   |       _pad        |
+/// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+
+///
+///  Field          Bits   Offset     Description
+///  _msg_type      4      byte 0:0   ServerMessage::NewClient
+///  client_id      4      byte 0:4   Driver slot (0-7) of new/changed client
+///  client_count   4      byte 1:0   Total connected clients in room
+///  _pad           4      byte 1:4   Unused
 use deku::prelude::*;
 
 #[derive(Debug, Clone, DekuRead, DekuWrite)]
