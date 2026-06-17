@@ -8,7 +8,7 @@
 /// |   _msg_type   |     _pad      |              room_type              |             r_type_locked             |
 /// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
 ///
-///  Field           Bits   Offset     Description 
+///  Field           Bits   Offset     Description
 ///  _msg_type       4      byte 0:0   ServerMessage::RoomType
 ///  _pad            4      byte 0:4   Unused
 ///  room_type       8      byte 1:0   0=normal, 1=tournament

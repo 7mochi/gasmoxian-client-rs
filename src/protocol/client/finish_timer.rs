@@ -8,7 +8,7 @@
 /// |   _msg_type   |     _pad0     |       finish_timer        |  _pad1  |
 /// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+
 ///
-///  Field          Bits   Offset     Description 
+///  Field          Bits   Offset     Description
 ///  _msg_type      4      byte 0:0   ClientMessage::FinishTimer
 ///  _pad0          4      byte 0:4   Unused
 ///  finish_timer   6      byte 1:0   Finish timer (0-63)

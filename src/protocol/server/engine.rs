@@ -8,7 +8,7 @@
 /// |   _msg_type   | client_id | _pad0 |   engine_type   | Lck |                        _pad1                         |
 /// +---+---+---+---+---+---+---+-------+---+---+----+----+-----+----+----+----+----+----+----+----+----+----+----+----+
 ///
-///  Field         Bits   Offset     Description 
+///  Field         Bits   Offset     Description
 ///  _msg_type     4      byte 0:0   ServerMessage::Engine
 ///  client_id     3      byte 0:4   Driver slot 0-7
 ///  _pad0         1      byte 0:7   Unused

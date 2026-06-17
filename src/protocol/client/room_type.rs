@@ -8,7 +8,7 @@
 /// |           _msg_type           |              room_type              |             r_type_locked             |
 /// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
 ///
-///  Field           Bits   Offset     Description 
+///  Field           Bits   Offset     Description
 ///  _msg_type       8      byte 0:0   ClientMessage::RoomType
 ///  room_type       8      byte 1:0   0=normal, 1=tournament
 ///  r_type_locked   8      byte 2:0   1=locked
@@ -33,4 +33,3 @@ impl RoomType {
         }
     }
 }
-

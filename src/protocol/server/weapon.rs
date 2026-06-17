@@ -8,7 +8,7 @@
 /// |   _msg_type   | client_id | jcd |     weapon      |  flags  |  _pad   |
 /// +---+---+---+---+---+---+---+-----+---+---+----+----+----+----+----+----+
 ///
-///  Field       Bits   Offset     Description 
+///  Field       Bits   Offset     Description
 ///  _msg_type   4      byte 0:0   ServerMessage::Weapon
 ///  client_id   3      byte 0:4   Driver slot 0-7
 ///  jcd         1      byte 0:7   1 = juiced (powered-up) weapon

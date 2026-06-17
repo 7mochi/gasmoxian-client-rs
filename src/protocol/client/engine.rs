@@ -8,7 +8,7 @@
 /// |   _msg_type   |     _pad0     |   engine_type   | lck |                        _pad1                         |
 /// +---+---+---+---+---+---+---+---+---+---+----+----+-----+----+----+----+----+----+----+----+----+----+----+----+
 ///
-///  Field         Bits   Offset     Description 
+///  Field         Bits   Offset     Description
 ///  _msg_type     4      byte 0:0   ClientMessage::Engine
 ///  _pad0         4      byte 0:4   Unused
 ///  engine_type   4      byte 1:0   0=BALANCED, 1=ACCEL, 2=SPEED, 3=TURN

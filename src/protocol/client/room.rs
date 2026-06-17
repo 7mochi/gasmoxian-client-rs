@@ -8,7 +8,7 @@
 /// |           _msg_type           |                room                 |
 /// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+
 ///
-///  Field      Bits   Offset     Description 
+///  Field      Bits   Offset     Description
 ///  _msg_type  8      byte 0:0   ClientMessage::JoinRoom
 ///  room       8      byte 1:0   Room index 0-15
 use deku::{DekuRead, DekuWrite};
@@ -30,4 +30,3 @@ impl Room {
         }
     }
 }
-

@@ -8,7 +8,7 @@
 /// |   _msg_type   | jcd | _pad0 | flags |     weapon      |       _end        |
 /// +---+---+---+---+-----+-------+---+---+---+---+----+----+----+----+----+----+
 ///
-///  Field       Bits   Offset     Description 
+///  Field       Bits   Offset     Description
 ///  _msg_type   4      byte 0:0   ClientMessage::Weapon
 ///  jcd         1      byte 0:4   1=juiced (powered up)
 ///  _pad0       1      byte 0:5   Unused

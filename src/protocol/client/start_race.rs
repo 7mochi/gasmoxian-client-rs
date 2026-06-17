@@ -8,7 +8,7 @@
 /// |           _msg_type           |
 /// +---+---+---+---+---+---+---+---+
 ///
-///  Field      Bits   Offset     Description 
+///  Field      Bits   Offset     Description
 ///  _msg_type  8      byte 0:0   ClientMessage::StartRace
 use deku::{DekuRead, DekuWrite};
 
@@ -26,4 +26,3 @@ impl StartRace {
         }
     }
 }
-

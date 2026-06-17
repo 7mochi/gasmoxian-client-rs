@@ -8,7 +8,7 @@
 /// |   _msg_type   | character_id  | lck |              _pad               |
 /// +---+---+---+---+---+---+---+---+-----+---+----+----+----+----+----+----+
 ///
-///  Field          Bits   Offset     Description 
+///  Field          Bits   Offset     Description
 ///  _msg_type      4      byte 0:0   ClientMessage::Character
 ///  character_id   4      byte 0:4   Character ID 0-15 (0=Crash, 1=Cortex, 2=Tiny, etc.)
 ///  lck            1      byte 1:0   1=locked in, 0=cycling

@@ -8,7 +8,7 @@
 /// |   _msg_type   |   client_id   |  client_count   |       _pad        |
 /// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+
 ///
-///  Field          Bits   Offset     Description 
+///  Field          Bits   Offset     Description
 ///  _msg_type      4      byte 0:0   ServerMessage::NewClient
 ///  client_id      4      byte 0:4   Driver slot 0-7
 ///  client_count   4      byte 1:0   Total clients in room

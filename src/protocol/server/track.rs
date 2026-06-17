@@ -8,7 +8,7 @@
 /// |   _msg_type   |     _pad0     |       track_id       |    _pad1     |                lap_id                 |
 /// +---+---+---+---+---+---+---+---+---+---+----+----+----+----+----+----+----+----+----+----+----+----+----+----+
 ///
-///  Field       Bits   Offset     Description 
+///  Field       Bits   Offset     Description
 ///  _msg_type   4      byte 0:0   ServerMessage::Track
 ///  _pad0       4      byte 0:4   Unused
 ///  track_id    5      byte 1:0   Track ID 0-24
