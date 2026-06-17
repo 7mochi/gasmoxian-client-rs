@@ -1,5 +1,3 @@
-/// Server → Client: Weapon pickup notification (2 bytes)
-///
 /// Sent when a player picks up or uses a weapon item.
 ///
 /// +---+---+---+---+---+---+---+-----+---+---+----+----+----+----+----+----+
