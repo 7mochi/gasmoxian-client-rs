@@ -40,8 +40,8 @@ pub fn handle(ctr: &OnlineCtrSnapshot, _state: &mut GameState, message: Rooms) -
     effects.push(Effect::SetRoomCount(message.room_count));
 
     let mut client_count = [0i8; 16];
-    for i in 0..16 {
-        client_count[i] = message.client_count[i] as i8;
+    for (i, c) in client_count.iter_mut().enumerate() {
+        *c = message.client_count[i] as i8;
     }
     effects.push(Effect::SetClientCount(client_count));
 

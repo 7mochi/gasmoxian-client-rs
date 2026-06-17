@@ -35,10 +35,10 @@ pub fn exec_effects(
                 ps1_memory.online_ctr_mut().room_type_locked = v;
             }
             Effect::SendReliable(bytes) => {
-                if let Some(net) = net {
-                    if let Err(e) = net.send_reliable(&bytes) {
-                        console::err(format!("send_reliable failed: {e}"));
-                    }
+                if let Some(net) = net
+                    && let Err(e) = net.send_reliable(&bytes)
+                {
+                    console::err(format!("send_reliable failed: {e}"));
                 }
             }
             Effect::SendUnsequenced(bytes) => {

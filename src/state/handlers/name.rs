@@ -20,9 +20,7 @@ pub fn handle(ctr: &OnlineCtrSnapshot, _state: &mut GameState, message: Name) ->
         };
 
         let mut name_data = [0u8; MAX_NAME_LENGTH + 1];
-        for i in 0..MAX_NAME_LENGTH {
-            name_data[i] = message.username[i];
-        }
+        name_data[..MAX_NAME_LENGTH].copy_from_slice(&message.username[..MAX_NAME_LENGTH]);
         name_data[MAX_NAME_LENGTH - 1] = 0;
 
         let mut effects: Vec<Effect> = vec![

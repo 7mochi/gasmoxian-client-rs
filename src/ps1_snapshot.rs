@@ -105,7 +105,7 @@ impl OnlineCtrSnapshot {
     /// but the time window is so short it is effectively atomic).
     pub fn capture(ps1: &Ps1Memory, now_secs: f64) -> Self {
         let ctr: &OnlineCTR = ps1.online_ctr();
-        let psx_pointer = (ps1.read_u32(PSX_POINTER).unwrap_or(0) & 0xFFFFFF) as u32;
+        let psx_pointer = ps1.read_u32(PSX_POINTER).unwrap_or(0) & 0xFFFFFF;
         let gamepad_hold = ps1.read_u32(GAMEPAD_BASE + 0x10).unwrap_or(0);
         let loading_stage = ps1.read_u32(LOADING_STAGE).unwrap_or(0xFFFFFFFF);
         let game_mode = ps1.read_u32(GAMEMODE).unwrap_or(0);
@@ -113,9 +113,8 @@ impl OnlineCtrSnapshot {
         let character_id = ps1.read_u32(CHARACTER_ID).unwrap_or(0);
         let cheats = ps1.read_u32(CHEATS).unwrap_or(0);
         let mut slot_psx_pointers = [0u32; MAX_NUM_PLAYERS];
-        for slot in 0..MAX_NUM_PLAYERS {
-            slot_psx_pointers[slot] =
-                ps1.read_u32(PSX_POINTER + (slot as u32 * 4)).unwrap_or(0) & 0xFFFFFF;
+        for (slot, ptr) in slot_psx_pointers.iter_mut().enumerate() {
+            *ptr = ps1.read_u32(PSX_POINTER + (slot as u32 * 4)).unwrap_or(0) & 0xFFFFFF;
         }
 
         // Race data (read dynamically via psx_pointer)

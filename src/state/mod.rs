@@ -669,10 +669,8 @@ pub fn game_start_race(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Ef
     let mut effects = send_everything(ctr);
 
     // demo camera mode
-    if ctr.gamemodes[Gamemode::DemoCamera as usize] {
-        if ctr.cutscene_level_id < 18 {
-            effects.push(Effect::WriteU16(0x80098028, 0x20));
-        }
+    if ctr.gamemodes[Gamemode::DemoCamera as usize] && ctr.cutscene_level_id < 18 {
+        effects.push(Effect::WriteU16(0x80098028, 0x20));
     }
 
     let warpclock = ctr.warpclock as i32;
