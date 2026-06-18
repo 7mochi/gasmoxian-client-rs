@@ -1,13 +1,11 @@
-//! Linux shared-memory access to DuckStation PS1 RAM.
+//! Platform shared-memory access to DuckStation PS1 RAM.
 //!
-//! [`Ps1Memory::connect`] finds the DuckStation process by scanning
-//! `/dev/shm/duckstation_<pid>` and maps 8 MiB via `shm_open` +
-//! `mmap`. The [`OnlineCTR`] protocol struct lives at offset
-//! `0x8000C000 & 0xFFFFFF` inside that mapping.
+//! On Linux, finds DuckStation by scanning `/dev/shm/duckstation_<pid>`
+//! and maps 8 MiB via `shm_open` + `mmap`.
+//! On Windows, enumerates running processes to find DuckStation and
+//! opens its named file mapping via `OpenFileMappingW` + `MapViewOfFile`.
 
-use std::ffi::CString;
 use std::fmt;
-use std::ptr;
 
 use anyhow::{Context, Result};
 
@@ -69,6 +67,9 @@ fn find_duckstation_pid() -> Option<i32> {
 
 #[cfg(unix)]
 fn open_shmem(pid: i32) -> Result<*mut u8> {
+    use std::ffi::CString;
+    use std::ptr;
+
     let name = CString::new(format!("duckstation_{}", pid))?;
 
     let file_descriptor = unsafe { libc::shm_open(name.as_ptr(), libc::O_RDWR, 0o600) };
@@ -94,6 +95,70 @@ fn open_shmem(pid: i32) -> Result<*mut u8> {
     };
 
     Ok(pointer)
+}
+
+#[cfg(windows)]
+fn find_duckstation_pid() -> Option<i32> {
+    use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE, TRUE};
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::*;
+
+    unsafe {
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snapshot == INVALID_HANDLE_VALUE {
+            return None;
+        }
+
+        let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+        entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+
+        if Process32FirstW(snapshot, &mut entry) == TRUE {
+            loop {
+                let len = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(260);
+                let name = String::from_utf16_lossy(&entry.szExeFile[..len]);
+                if name.to_lowercase().starts_with("duckstation") {
+                    let pid = entry.th32ProcessID;
+                    CloseHandle(snapshot);
+                    return Some(pid as i32);
+                }
+                if Process32NextW(snapshot, &mut entry) != TRUE {
+                    break;
+                }
+            }
+        }
+
+        CloseHandle(snapshot);
+        None
+    }
+}
+
+#[cfg(windows)]
+fn open_shmem(pid: i32) -> Result<*mut u8> {
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Memory::*;
+
+    let name: Vec<u16> = format!("duckstation_{}\0", pid).encode_utf16().collect();
+
+    unsafe {
+        let handle = OpenFileMappingW(FILE_MAP_READ | FILE_MAP_WRITE, 0, name.as_ptr());
+        if handle.is_null() {
+            return Err(Ps1MemoryError::OpenFailed(std::io::Error::last_os_error()).into());
+        }
+
+        let view = MapViewOfFile(
+            handle,
+            FILE_MAP_READ | FILE_MAP_WRITE,
+            0,
+            0,
+            SHARED_MEMORY_SIZE,
+        );
+        CloseHandle(handle);
+
+        if view.Value.is_null() {
+            return Err(Ps1MemoryError::MapFailed(std::io::Error::last_os_error()).into());
+        }
+
+        Ok(view.Value as *mut u8)
+    }
 }
 
 pub struct Ps1Memory {
@@ -172,8 +237,18 @@ impl Ps1Memory {
 impl Drop for Ps1Memory {
     fn drop(&mut self) {
         if !self.pointer.is_null() {
+            #[cfg(unix)]
             unsafe {
                 libc::munmap(self.pointer as *mut libc::c_void, self.size);
+            }
+            #[cfg(windows)]
+            unsafe {
+                use windows_sys::Win32::System::Memory::{
+                    MEMORY_MAPPED_VIEW_ADDRESS, UnmapViewOfFile,
+                };
+                UnmapViewOfFile(MEMORY_MAPPED_VIEW_ADDRESS {
+                    Value: self.pointer as *mut core::ffi::c_void,
+                });
             }
         }
     }
