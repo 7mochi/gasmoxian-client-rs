@@ -18,7 +18,7 @@ pub fn handle(ctr: &OnlineCtrSnapshot, state: &mut GameState, message: Kart) -> 
         return vec![];
     }
 
-    let driver_id = ctr.driver_id;
+    let driver_id = state.connection.driver_id;
     if message.client_id == driver_id {
         return vec![];
     }

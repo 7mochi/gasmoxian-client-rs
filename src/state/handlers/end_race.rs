@@ -11,7 +11,7 @@ use crate::{
 /// forces SQUARE on the finished player's gamepad to return them to
 /// the lobby.
 pub fn handle(ctr: &OnlineCtrSnapshot, state: &mut GameState, message: EndRace) -> Vec<Effect> {
-    let driver_id = ctr.driver_id;
+    let driver_id = state.connection.driver_id;
     if message.client_id == driver_id {
         return vec![];
     }
@@ -35,7 +35,8 @@ pub fn handle(ctr: &OnlineCtrSnapshot, state: &mut GameState, message: EndRace) 
         effects.push(Effect::WriteU32(gp_addr + 0xC, 0x20));
     }
 
-    let ended = ctr.drivers_ended_count as usize;
+    let ended = state.race.drivers_ended;
+    state.race.drivers_ended += 1;
     effects.push(Effect::WriteRaceStats {
         slot: ended,
         stats: RaceStats {
@@ -44,7 +45,7 @@ pub fn handle(ctr: &OnlineCtrSnapshot, state: &mut GameState, message: EndRace) 
             best_lap: message.lap_time,
         },
     });
-    effects.push(Effect::SetDriversEndedCount(ctr.drivers_ended_count + 1));
+    effects.push(Effect::SetDriversEndedCount(state.race.drivers_ended as u8));
 
     effects
 }

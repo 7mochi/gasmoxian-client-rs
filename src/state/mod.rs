@@ -68,6 +68,8 @@ pub struct RaceFlags {
 pub struct Connection {
     /// Number of join-room attempts made (stops duplicate sends at 1).
     pub attempt: i32,
+    /// This client's driver slot, updated immediately on NewClient (not via effect).
+    pub driver_id: u8,
     /// Resolved server address to connect to.
     pub server_addr: Option<SocketAddr>,
     /// Index into [`SERVERS`] for the selected server.
@@ -91,6 +93,10 @@ pub struct Race {
     pub timers: [f64; 2],
     /// Whether extra laps were configured (affects finish timer thresholds).
     pub extra_laps: i32,
+    /// Number of drivers whose EndRace has been processed. Used as the next
+    /// slot index for RaceStats writes, avoiding snapshot staleness when
+    /// multiple EndRace messages arrive in the same frame batch.
+    pub drivers_ended: usize,
     /// One-shot send flags for this race.
     pub flags: RaceFlags,
 }
@@ -371,7 +377,7 @@ pub fn lobby_assign_role(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<
     state.race.count_frame = 0;
 
     // guest: do nothing
-    if ctr.driver_id > 0 {
+    if state.connection.driver_id > 0 {
         return vec![];
     }
 
@@ -405,7 +411,7 @@ pub fn lobby_assign_role(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<
 /// the character is locked.
 pub fn lobby_character_pick(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effect> {
     let character_id = ctr.character_id as i32;
-    let locked_in = ctr.locked_in_characters[ctr.driver_id as usize] as i32;
+    let locked_in = ctr.locked_in_characters[state.connection.driver_id as usize] as i32;
 
     let previous_selection = &mut state.previous_selection;
     let has_changed = previous_selection.character_id != Some(character_id)
@@ -435,7 +441,7 @@ pub fn lobby_character_pick(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> V
 /// to `LobbyWaitForLoading` when the engine is locked.
 pub fn lobby_engine_pick(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effect> {
     let engine_type = ctr.engine_type[0] as i32;
-    let locked_in = ctr.locked_in_engines[ctr.driver_id as usize] as i32;
+    let locked_in = ctr.locked_in_engines[state.connection.driver_id as usize] as i32;
 
     let previous_selection = &mut state.previous_selection;
     let has_changed = previous_selection.engine_type != Some(engine_type)
@@ -768,7 +774,8 @@ pub fn game_end_race(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effe
 
         effects.push(Effect::SendReliable(client_message));
 
-        let ended = ctr.drivers_ended_count as usize;
+        let ended = state.race.drivers_ended;
+        state.race.drivers_ended += 1;
         effects.push(Effect::WriteRaceStats {
             slot: ended,
             stats: RaceStats {
@@ -777,7 +784,7 @@ pub fn game_end_race(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effe
                 best_lap,
             },
         });
-        effects.push(Effect::SetDriversEndedCount(ctr.drivers_ended_count + 1));
+        effects.push(Effect::SetDriversEndedCount(state.race.drivers_ended as u8));
 
         state.race.flags.sent_end_race = true;
     }
@@ -789,7 +796,7 @@ pub fn game_end_race(ctr: &OnlineCtrSnapshot, state: &mut GameState) -> Vec<Effe
                 active += 1;
             }
         }
-        let ended = ctr.drivers_ended_count as i32;
+        let ended = state.race.drivers_ended as i32;
         let finish_race_timer = ctr.finish_race_timer;
 
         if ended == active

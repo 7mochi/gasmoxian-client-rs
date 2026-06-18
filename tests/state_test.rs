@@ -158,9 +158,10 @@ fn launch_pick_room_join() {
 
 #[test]
 fn lobby_assign_role_guest() {
-    let mut ctr = make_snapshot();
-    ctr.driver_id = 2;
-    let effects = state::lobby_assign_role(&ctr, &mut GameState::new());
+    let ctr = make_snapshot();
+    let mut state = GameState::new();
+    state.connection.driver_id = 2;
+    let effects = state::lobby_assign_role(&ctr, &mut state);
     assert!(effects.is_empty());
 }
 

@@ -7,8 +7,8 @@ use crate::{
 
 /// Handles `ServerMessage::Weapon`. Sets the shoot slot (`now = 1`)
 /// for another player's weapon pickup.
-pub fn handle(ctr: &OnlineCtrSnapshot, _state: &mut GameState, message: Weapon) -> Vec<Effect> {
-    let driver_id = ctr.driver_id;
+pub fn handle(_ctr: &OnlineCtrSnapshot, state: &mut GameState, message: Weapon) -> Vec<Effect> {
+    let driver_id = state.connection.driver_id;
     if message.client_id != driver_id {
         let slot = if message.client_id < driver_id {
             message.client_id + 1

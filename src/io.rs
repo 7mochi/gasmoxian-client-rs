@@ -14,6 +14,27 @@ pub fn exec_effects(
     ps1_memory: &mut Ps1Memory,
     net: &mut Option<EnetClient>,
 ) {
+    // Pre-scan for critical fields that the PS1 reads during frame processing.
+    //
+    // DuckStation's PS1 emulation reads shared memory continuously, even while
+    // `exec_effects` is still writing. Without this pre-scan, `SetRoomType` from
+    // the RoomType message (processed first) would be written to shared memory
+    // before `SetDriverId` and `SetState` from NewClient (processed later).
+    // If the PS1 reads at that instant, it sees `driver_id=0, locked=0` and
+    // enters host mode instead of guest.
+    //
+    // Writing these three fields together first eliminates the window where
+    // state and driver_id are inconsistent with each other.
+    for effect in effects.iter() {
+        match effect {
+            Effect::SetDriverId(v) => ps1_memory.online_ctr_mut().driver_id = *v,
+            Effect::SetRoomTypeLocked(v) => ps1_memory.online_ctr_mut().room_type_locked = *v,
+            Effect::SetState(s) => ps1_memory.online_ctr_mut().current_state = *s as i32,
+            Effect::SetStateRaw(v) => ps1_memory.online_ctr_mut().current_state = *v,
+            _ => {}
+        }
+    }
+
     for effect in effects.drain(..) {
         match effect {
             Effect::SetState(s) => {

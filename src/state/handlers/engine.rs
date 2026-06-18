@@ -4,8 +4,8 @@ use crate::{
 
 /// Handles `ServerMessage::Engine`. Writes other players' engine
 /// choices to PS1 memory (clamped to 0-3) and updates locked-in state.
-pub fn handle(ctr: &OnlineCtrSnapshot, _state: &mut GameState, message: Engine) -> Vec<Effect> {
-    let driver_id = ctr.driver_id;
+pub fn handle(_ctr: &OnlineCtrSnapshot, state: &mut GameState, message: Engine) -> Vec<Effect> {
+    let driver_id = state.connection.driver_id;
     if message.client_id != driver_id {
         let slot = if message.client_id < driver_id {
             message.client_id + 1

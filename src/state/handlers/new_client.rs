@@ -33,10 +33,13 @@ pub fn handle(
     state.previous.special = Some(-1);
     state.previous.finish_timer = Some(-1);
     state.race.extra_laps = 0;
+    state.race.drivers_ended = 0;
     state.race.square_delay = [0; MAX_NUM_PLAYERS];
 
+    state.connection.driver_id = message.client_id;
     effects.push(Effect::SetDriverId(message.client_id));
     effects.push(Effect::SetDriverCount(message.client_count));
+    effects.push(Effect::SetRoomTypeLocked(1));
     effects.push(Effect::SetLockedInLap(0));
     effects.push(Effect::SetLockedInLevel(0));
     effects.push(Effect::SetLockedInEngineByte(0));
@@ -60,10 +63,9 @@ pub fn handle(
                 best_lap: 0,
             },
         });
-        let name_data = [0u8; MAX_NAME_LENGTH + 1];
         effects.push(Effect::SetNameBuffer {
             slot: i,
-            data: name_data,
+            data: [0u8; MAX_NAME_LENGTH + 1],
         });
     }
 

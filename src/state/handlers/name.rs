@@ -10,15 +10,14 @@ use crate::{
 /// players. If the name starts with a null byte (player left) or the
 /// current state is pre-race, forces SQUARE on that player's gamepad
 /// to remove them from the lobby.
-pub fn handle(ctr: &OnlineCtrSnapshot, _state: &mut GameState, message: Name) -> Vec<Effect> {
-    let driver_id = ctr.driver_id;
+pub fn handle(ctr: &OnlineCtrSnapshot, state: &mut GameState, message: Name) -> Vec<Effect> {
+    let driver_id = state.connection.driver_id;
+    let slot = if message.client_id < driver_id {
+        (message.client_id + 1) as usize
+    } else {
+        message.client_id as usize
+    };
     if message.client_id != driver_id {
-        let slot = if message.client_id < driver_id {
-            (message.client_id + 1) as usize
-        } else {
-            message.client_id as usize
-        };
-
         let mut name_data = [0u8; MAX_NAME_LENGTH + 1];
         name_data[..MAX_NAME_LENGTH].copy_from_slice(&message.username[..MAX_NAME_LENGTH]);
         name_data[MAX_NAME_LENGTH - 1] = 0;

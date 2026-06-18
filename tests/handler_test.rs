@@ -174,9 +174,9 @@ fn handle_new_client_resets_and_sends_name() {
 
 #[test]
 fn handle_name_other_player() {
-    let mut ctr = make_snapshot();
-    ctr.driver_id = 1; // not the sender
+    let ctr = make_snapshot();
     let mut state = GameState::new();
+    state.connection.driver_id = 1; // not the sender
     let payload = [
         0x04, 0x40, 0x58, 0x6e, 0x69, 0x74, 0x72, 0x6f, 0x36, 0x37, 0x00, 0x00, 0x00, 0x00,
     ];
@@ -272,9 +272,9 @@ fn handle_character_other_player() {
 
 #[test]
 fn handle_character_self_is_noop() {
-    let mut ctr = make_snapshot();
-    ctr.driver_id = 1;
+    let ctr = make_snapshot();
     let mut state = GameState::new();
+    state.connection.driver_id = 1;
     let (_, msg) = Character::from_bytes((&[0x17, 0x08], 0)).unwrap();
     let effects = handlers::character::handle(&ctr, &mut state, msg);
     assert!(effects.is_empty());
@@ -390,7 +390,7 @@ fn handle_end_race_other_player() {
     ctr.drivers_ended_count = 0;
     let mut state = GameState::new();
     let payload = [
-        0x0f, 0x04, 0x00, 0x00, 0x40, 0xe2, 0x01, 0x00, 0x35, 0x34, 0x01, 0x00,
+        0x4f, 0x00, 0x00, 0x00, 0x40, 0xe2, 0x01, 0x00, 0x35, 0x34, 0x01, 0x00,
     ];
     let (_, msg) = EndRace::from_bytes((&payload, 0)).unwrap();
     let effects = handlers::end_race::handle(&ctr, &mut state, msg);
